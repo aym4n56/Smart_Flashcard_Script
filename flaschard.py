@@ -21,19 +21,26 @@ def clear_screen():
     else:
         os.system('clear')
 
-def save_to_file(data, filename, directory="."):
+def save_to_file(flashcards, similarity_threshold, filename, directory=directory):
     filepath = os.path.join(directory, filename)
+    data = {
+        'flashcards': flashcards,
+        'similarity_threshold': similarity_threshold
+    }
     with open(filepath, 'w') as file:
         json.dump(data, file)
+
 
 def load_flashcards_from_json(json_file):
     try:
         with open(json_file, 'r') as file:
-            flashcards = json.load(file)
-            return flashcards
+            data = json.load(file)
+            flashcards = data.get('flashcards', {})
+            similarity_threshold = data.get('similarity_threshold', 0.5)
+            return flashcards, similarity_threshold
     except FileNotFoundError:
         print("File not found.\n")
-        return {}
+        return {}, 0.5
         
 def preprocess_data(flashcards):
     questions = list(flashcards.keys())
@@ -69,6 +76,12 @@ if new_or_old.strip().lower() == old.strip().lower():
     old_file_name = input("What is the file called?\n")
     old_flashcards_file = os.path.join(directory, old_file_name)
     flashcards = load_flashcards_from_json(old_flashcards_file)
+
+    flashcards_data = load_flashcards_from_json(old_flashcards_file)
+    flashcards = flashcards_data[0]
+    similarity_threshold = flashcards_data[1]
+
+
 elif new_or_old.strip().lower() == new.strip().lower():
     size = int(input("How many flashcards do you have?\n"))
 
@@ -92,7 +105,7 @@ elif new_or_old.strip().lower() == new.strip().lower():
     
     if yes_or_no.strip().lower() == yes.strip().lower():
         set_file_name = input("Enter your filename:\n")
-        save_to_file(flashcards, set_file_name + ".json",directory)
+        save_to_file(flashcards, similarity_threshold, set_file_name + ".json",directory)
     elif yes_or_no.strip().lower() == no.strip().lower():
         print("You have chosen not to save these quesions you may now continue")
     
@@ -127,11 +140,16 @@ for question, answer in random_questions:
         supervised_learning_feedback = input("Was your answer correct? (yes/no) ")
         
         if supervised_learning_feedback.lower() == "yes":
-            similarity_threshold =+ 0.05
+            similarity_threshold = similarity_threshold - 0.05
             score = score + 1
             print("Thank you for the feeback, the program will learn from this")
         
-        
+
+try:
+    save_to_file(flashcards, similarity_threshold, set_file_name+".json", directory) 
+except Exception as e:
+    save_to_file(flashcards, similarity_threshold, old_file_name, directory)       
+
 print(f"You got {score}/{number_of_questions}")
 
 time.sleep(1)
