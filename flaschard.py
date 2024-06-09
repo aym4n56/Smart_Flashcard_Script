@@ -5,15 +5,21 @@ import random
 import time
 import sys
 
+import sqlite3
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
 
 flashcards = {} #define dictionary list
 directory = os.path.dirname(os.path.abspath(__file__))
 similarity_threshold = 0.5
 valid_size_input = False
-size = 0 
+size = 0
+
+database_file_path = os.path.join(directory, 'answer_learning.db')
+
+conn = sqlite3.connect(database_file_path)
+cursor = conn.cursor()
 
 def clear_screen():
     # For Windows
@@ -83,6 +89,8 @@ if new_or_old.strip().lower() == old.strip().lower():
     flashcards = flashcards_data[0]
     similarity_threshold = flashcards_data[1]
 
+    cursor.execute("INSERT OR IGNORE INTO JSON_files(file_name) VALUES (?)", (old_file_name,))
+    conn.commit()
 
 elif new_or_old.strip().lower() == new.strip().lower():
     while not valid_size_input:
@@ -114,6 +122,8 @@ elif new_or_old.strip().lower() == new.strip().lower():
     if yes_or_no.strip().lower() == yes.strip().lower():
         set_file_name = input("Enter your filename:\n")
         save_to_file(flashcards, similarity_threshold, set_file_name + ".json",directory)
+        cursor.execute("INSERT OR IGNORE INTO JSON_files(file_name) VALUES (?)", (set_file_name+".json",))
+        conn.commit()
     elif yes_or_no.strip().lower() == no.strip().lower():
         print("You have chosen not to save these quesions you may now continue")
     
@@ -154,9 +164,9 @@ for question, answer in random_questions:
         
 
 try:
-    save_to_file(flashcards, similarity_threshold, set_file_name+".json", directory) 
+    save_to_file(flashcards, similarity_threshold, set_file_name+".json", directory)
 except Exception as e:
-    save_to_file(flashcards, similarity_threshold, old_file_name, directory)       
+    save_to_file(flashcards, similarity_threshold, old_file_name, directory)
 
 print(f"You got {score}/{number_of_questions}")
 
