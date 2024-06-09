@@ -10,7 +10,6 @@ import sqlite3
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-
 flashcards = {} #define dictionary list
 directory = os.path.dirname(os.path.abspath(__file__))
 similarity_threshold = 0.5
@@ -59,18 +58,18 @@ def preprocess_data(flashcards):
     answer = list(flashcards.values())
     return questions, answer
     
-def is_correct_answer(users_answer, answer):
-    # Try to handle numeric answers
-    try:
-        users_answer = float(users_answer)
-        answer = float(answer)
-        return users_answer == answer
-    except ValueError:
-        # Handle non-numeric answers
-        vectorizer = TfidfVectorizer().fit_transform([users_answer, answer])
-        vectors = vectorizer.toarray()
-        similarity = cosine_similarity(vectors[0:2])
-        return similarity[0][1] > similarity_threshold
+def is_correct_answer(users_answer, correct_answers, incorrect_answers):
+    all_answers = correct_answers + incorrect_answers
+    labels = [1] * len(correct_answers) + [0] * len(incorrect_answers)
+
+    vectorizer = TfidfVectorizer().fit_transform([users_answer] + all_answers)
+    vectors = vectorizer.toarray()
+    user_vector = vectors[0]
+    answer_vectors = vectors[1:]
+
+    similarities = cosine_similarity([user_vector], answer_vectors).flatten()
+    most_similar_index = similarities.argmax()
+    return labels[most_similar_index], similarities[most_similar_index]
     
 def get_json_file_id(cursor, current_file):
     cursor.execute("SELECT id FROM JSON_files WHERE file_name = ?", (current_file,))
@@ -81,6 +80,14 @@ def get_question_id(cursor, json_file_id, question_text):
     cursor.execute("SELECT id FROM questions WHERE json_file_id = ? AND question_text = ?", (json_file_id, question_text))
     question_id_result = cursor.fetchone()
     return question_id_result
+
+def get_correct_answers(cursor, question_id):
+    cursor.execute("SELECT answer_text FROM correct_answers WHERE question_id = ?", (question_id,))
+    return [row[0] for row in cursor.fetchall()]
+
+def get_incorrect_answers(cursor, question_id):
+    cursor.execute("SELECT answer_text FROM incorrect_answers WHERE question_id = ?", (question_id,))
+    return [row[0] for row in cursor.fetchall()]
 
 clear_screen()
 
@@ -172,8 +179,19 @@ for question, answer in random_questions:
     
     cursor.execute("INSERT OR IGNORE INTO questions (json_file_id, question_text) VALUES (?, ?)",(json_file_id, question))
     conn.commit()
+
+    question_id_result = get_question_id(cursor, json_file_id, question)
+    if question_id_result:
+        question_id = question_id_result[0]
+
+    correct_answers = get_correct_answers(cursor, question_id)
+    incorrect_answers= get_incorrect_answers(cursor, question_id)
+
+    is_correct, similarity = is_correct_answer(users_answer, correct_answers, incorrect_answers)
+
+    cursor.execute("INSERT OR IGNORE INTO correct_answers (question_id, answer_text) VALUES (?, ?)", (question_id, answer))
     
-    if is_correct_answer(users_answer, answer) :
+    if is_correct_answer(users_answer, correct_answers, incorrect_answers) :
         print("Nice!\n")
         score = score+1
 
