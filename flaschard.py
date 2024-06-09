@@ -12,6 +12,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 flashcards = {} #define dictionary list
 directory = os.path.dirname(os.path.abspath(__file__))
 similarity_threshold = 0.5
+valid_size_input = False
+size = 0 
 
 def clear_screen():
     # For Windows
@@ -83,18 +85,24 @@ if new_or_old.strip().lower() == old.strip().lower():
 
 
 elif new_or_old.strip().lower() == new.strip().lower():
-    size = int(input("How many flashcards do you have?\n"))
+    while not valid_size_input:
+        size_input = input("How many flashcards do you have?\n")
+        if size_input.isdigit():  # Checking if the input is a digit
+            size = int(size_input)  # Converting the input to an integer
+            valid_size_input = True  # Set the flag to True to exit the loop
+        else:
+            print("Please enter a valid integer.")
 
-    #question will repeat until the list has been filled
+    # question will repeat until the list has been filled
     for i in range(size):
         question = input("Enter the Question:\n")
         answer = input("Enter the answer for this question:\n")
         flashcards[question] = answer
-        #Finished entering flashcards
+        # Finished entering flashcards
 
     print("You have entered all your flashcards\n")
     
-    #initialise variables now
+    # Initialise variables now
     yes_or_no = ""
     yes = "Y"
     no = "N"
