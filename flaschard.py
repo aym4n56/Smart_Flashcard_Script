@@ -1,3 +1,4 @@
+
 #python3 /Users/ayman/Desktop/FlashcardApp/flaschard.py
 import os
 import json
@@ -21,6 +22,8 @@ database_file_path = os.path.join(directory, 'answer_learning.db')
 
 current_file = ""
 json_file_id_result = ""
+question_id_result = ""
+question_id = ""
 
 conn = sqlite3.connect(database_file_path)
 cursor = conn.cursor()
@@ -78,9 +81,22 @@ def get_json_file_id(cursor, current_file):
     return json_file_id_result
 
 def get_question_id(cursor, json_file_id, question_text):
-    cursor.execute("SELECT id FROM questions WHERE json_file_id = ? AND question_text = ?", (json_file_id, question_text))
+    cursor.execute("SELECT question_id FROM questions WHERE json_file_id = ? AND question_text = ?", (json_file_id, question_text))
     question_id_result = cursor.fetchone()
     return question_id_result
+
+def insert_question(cursor, json_file_id, question_text):
+    cursor.execute("INSERT OR IGNORE INTO questions (json_file_id, question_text) VALUES (?, ?)", (json_file_id, question_text))
+    conn.commit()
+    cursor.execute("SELECT question_id FROM questions WHERE json_file_id = ? AND question_text = ?", (json_file_id, question_text))
+    question_id_result = cursor.fetchone()
+    if question_id_result:
+        return question_id_result[0]
+    return None
+
+def insert_correct_answer(cursor, question_id, answer_text):
+    cursor.execute("INSERT OR IGNORE INTO correct_answers (question_id, answer_text) VALUES (?, ?)", (question_id, answer_text))
+    conn.commit()
 
 clear_screen()
 
@@ -163,27 +179,21 @@ score = 0
 number_of_questions = 0
 
 for question, answer in random_questions:
-    users_answer = input(question + "\n") #initialised this variable to compare to real answer
-    number_of_questions = number_of_questions + 1 #keeps count of questions asked
-    
+     
     json_file_id_result = get_json_file_id(cursor, current_file)
     if json_file_id_result:
         json_file_id = json_file_id_result[0]
     
-    cursor.execute("INSERT OR IGNORE INTO questions (json_file_id, question_text) VALUES (?, ?)",(json_file_id, question))
-    conn.commit()
-    
+    question_id = insert_question(cursor, json_file_id, question)
+    insert_correct_answer(cursor, question_id, answer)
+
+    users_answer = input(question + "\n") #initialised this variable to compare to real answer
+    number_of_questions = number_of_questions + 1 #keeps count of questions asked    
+
     if is_correct_answer(users_answer, answer) :
         print("Nice!\n")
         score = score+1
-
-        question_id_result = get_question_id(cursor, json_file_id, question)
-        if question_id_result:
-            question_id = question_id_result[0]
-
-        cursor.execute("INSERT OR IGNORE INTO correct_answers (question_id, answer_text) VALUES (?, ?)", (question_id, users_answer))
-        conn.commit()
-
+        insert_correct_answer(cursor, question_id, users_answer)
     else:
         print(f"Wrong, the answer is {answer}\n")
         supervised_learning_feedback = input("Was your answer correct? (yes/no) ")
@@ -191,20 +201,10 @@ for question, answer in random_questions:
         if supervised_learning_feedback.lower() == "yes":
             similarity_threshold = similarity_threshold - 0.05
             score = score + 1
-
-            question_id_result = get_question_id(cursor, json_file_id, question)
-            if question_id_result:
-                question_id = question_id_result[0]
-
-            cursor.execute("INSERT OR IGNORE INTO correct_answers (question_id, answer_text) VALUES (?, ?)", (question_id, users_answer))
-            conn.commit()
-
+            insert_correct_answer(cursor, question_id, users_answer)
             print("Thank you for the feeback, the program will learn from this")
         
         elif supervised_learning_feedback.lower() == "no":
-            question_id_result = get_question_id(cursor, json_file_id, question)
-            if question_id_result:
-                question_id = question_id_result[0]
 
             cursor.execute("INSERT OR IGNORE INTO incorrect_answers (question_id, answer_text) VALUES (?, ?)", (question_id, users_answer))
             conn.commit()
@@ -226,3 +226,5 @@ if run_again.strip().lower() == run_again_yes.strip().lower():
      os.execv(sys.executable, [sys.executable] + sys.argv)
 else:
     sys.exit()
+
+
