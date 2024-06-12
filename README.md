@@ -6,7 +6,7 @@ If the user says their answer is correct after the program says it is wrong the 
 
 The program will compare to all correct answers and incorrect answers in the database, using the similarity threshold and then it will calculate the average of how similar they are to the correct and incorrect answers. 
 
-Ff it is more similar to the corrrect answers it will be deemed as correct.
+If it is more similar to the corrrect answers it will be deemed as correct.
 
 If it is more similar to the incorrect answers it will be deemed as incorrect.
 
