@@ -7,14 +7,18 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from PIL import Image, ImageTk 
+import re
 
 nltk.download('wordnet')
 nltk.download('stopwords')
 nltk.download('punkt')
+
 lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words('english'))
 directory = os.path.dirname(os.path.abspath(__file__))
 database_file_path = os.path.join(directory, 'flashcard.db')
+learn_button_file_path = os.path.join(directory, 'learn.png')
 similarity_threshold = 0.7
 
 def preprocess_text(text):
@@ -23,33 +27,48 @@ def preprocess_text(text):
     lemmatized_words = [lemmatizer.lemmatize(word) for word in filtered_words]
     return ' '.join(lemmatized_words)
 
-def is_correct_answer(users_answer, question_id, cursor, similarity_threshold):
+def extract_numbers(text):
+    return [int(num) for num in re.findall(r'\d+', text)]
+
+def is_correct_answer(users_answer, question_id, cursor):
     cursor.execute("SELECT answer_text FROM correct_answer WHERE question_id = ?", (question_id,))
     correct_answers = cursor.fetchall()
     cursor.execute("SELECT answer_text FROM incorrect_answer WHERE question_id = ?", (question_id,))
     incorrect_answers = cursor.fetchall()
-    
+
+    user_numbers = extract_numbers(users_answer)
+    if user_numbers:
+        for answer in correct_answers:
+            if extract_numbers(answer[0]) == user_numbers:
+                return True
+        for answer in incorrect_answers:
+            if extract_numbers(answer[0]) == user_numbers:
+                return False
+
     preprocessed_users_answer = preprocess_text(users_answer)
     preprocessed_correct_answers = [preprocess_text(answer[0]) for answer in correct_answers]
     preprocessed_incorrect_answers = [preprocess_text(answer[0]) for answer in incorrect_answers]
-    
+
     all_answers = [preprocessed_users_answer] + preprocessed_correct_answers + preprocessed_incorrect_answers
-    
-    vectorizer = TfidfVectorizer().fit_transform(all_answers)
-    vectors = vectorizer.toarray()
-    
+
+    try:
+        vectorizer = TfidfVectorizer().fit_transform(all_answers)
+        vectors = vectorizer.toarray()
+    except ValueError:
+        return None
+
     similarity_scores = cosine_similarity(vectors[0:1], vectors[1:])
-    
+
     num_correct = len(preprocessed_correct_answers)
     num_incorrect = len(preprocessed_incorrect_answers)
     total_correct_similarity = sum(similarity_scores[0][:num_correct])
     total_incorrect_similarity = sum(similarity_scores[0][num_correct:])
     avg_correct_similarity = total_correct_similarity / num_correct if num_correct > 0 else 0
     avg_incorrect_similarity = total_incorrect_similarity / num_incorrect if num_incorrect > 0 else 0
-    
-    if avg_correct_similarity > avg_incorrect_similarity and avg_correct_similarity > similarity_threshold:
+
+    if avg_correct_similarity > avg_incorrect_similarity:
         return True
-    elif avg_incorrect_similarity > avg_correct_similarity and avg_incorrect_similarity > similarity_threshold:
+    elif avg_incorrect_similarity > avg_correct_similarity:
         return False
     else:
         return None
@@ -290,6 +309,13 @@ class FlashcardDetailPage(tk.Frame):
         self.answer_entry = tk.Entry(self, font=controller.custom_font, width=30)
         self.answer_entry.pack(pady=10)
 
+        image = Image.open(learn_button_file_path)  
+        image = image.resize((30, 30), Image.LANCZOS)
+        self.add_to_correct_img = ImageTk.PhotoImage(image)
+
+        self.add_to_correct_button = tk.Button(self, image=self.add_to_correct_img, bg="white", bd=0, command=self.add_to_correct_answers)
+        self.add_to_correct_button.pack(pady=10, padx=(10, 0), side=tk.RIGHT)
+
         self.feedback_label = tk.Label(self, font=controller.custom_font, bg="white", fg="#333")
         self.feedback_label.pack(pady=10)
 
@@ -297,13 +323,17 @@ class FlashcardDetailPage(tk.Frame):
         self.button_frame.pack(pady=10)
 
         self.submit_button = tk.Button(self.button_frame, text="Submit Answer", font=controller.custom_font, bg="#4CAF50", fg="black", padx=20, pady=10, command=self.check_answer)
-        self.submit_button.pack(side="top", pady=5)
+        self.submit_button.pack(side="left", padx=10)
 
         self.next_question_button = tk.Button(self.button_frame, text="Next Question", font=controller.custom_font, bg="#4CAF50", fg="black", padx=20, pady=10, command=self.load_next_question)
-        self.next_question_button.pack(side="top", pady=5)
+        self.next_question_button.pack(side="left", padx=10)
 
         self.questions = []
         self.current_question_index = -1
+        self.current_question_id = None
+        self.current_answer = None
+        self.answered_questions = {}
+        self.current_attempt = 0
 
     def load_questions(self):
         cursor = self.controller.conn.cursor()
@@ -319,20 +349,24 @@ class FlashcardDetailPage(tk.Frame):
 
     def load_next_question(self):
         self.current_question_index += 1
-        if self.current_question_index < len(self.questions):
+        while self.current_question_index < len(self.questions):
             question_id, question_text, answer_text = self.questions[self.current_question_index]
-            self.current_question_id = question_id
-            self.current_answer = answer_text
-            self.question_label.config(text=f"Question: {question_text}")
-            self.answer_entry.delete(0, tk.END)
-            self.feedback_label.config(text="")
-
-            self.answer_entry.pack(pady=10)
-            self.feedback_label.pack(pady=10)
-            self.button_frame.pack(pady=10)
-
-            self.submit_button.pack(side="top", pady=5)
-            self.next_question_button.pack(side="top", pady=5)
+            if self.answered_questions.get(question_id, 0) == 0:
+                self.current_question_id = question_id
+                self.current_answer = answer_text
+                self.title_label.config(text=f"Flashcard Set: {self.controller.current_flashcard_id}")
+                self.question_label.config(text=f"Question: {question_text}")
+                self.answer_entry.delete(0, tk.END)
+                self.feedback_label.config(text="")
+                self.answer_entry.pack(pady=10)
+                self.feedback_label.pack(pady=10)
+                self.button_frame.pack(pady=10)
+                self.submit_button.pack(side="left", padx=10)
+                self.next_question_button.pack(side="left", padx=10)
+                self.current_attempt = 0
+                break
+            else:
+                self.current_question_index += 1
         else:
             self.question_label.config(text="No more questions.")
             self.answer_entry.pack_forget()
@@ -340,19 +374,37 @@ class FlashcardDetailPage(tk.Frame):
             self.feedback_label.pack_forget()
             self.button_frame.pack_forget()
 
-    def check_answer(self):
-        user_answer = self.answer_entry.get().strip()
+    def add_to_correct_answers(self):
+        user_answer = str(self.answer_entry.get().strip())
         cursor = self.controller.conn.cursor()
-        is_correct = is_correct_answer(user_answer, self.current_question_id, cursor, similarity_threshold)
-        if is_correct:
+        cursor.execute('DELETE FROM incorrect_answer WHERE question_id = ?', (self.current_question_id,))
+        cursor.execute('INSERT INTO correct_answer (question_id, answer_text) VALUES (?, ?)', (self.current_question_id, user_answer))
+        self.controller.conn.commit()
+        self.answered_questions[self.current_question_id] = 1  # Mark question as answered
+        self.feedback_label.config(text="Added to Correct Answers!", fg="green")
+
+    def check_answer(self):    
+        user_answer = str(self.answer_entry.get().strip())
+        cursor = self.controller.conn.cursor()
+        is_correct = is_correct_answer(user_answer, self.current_question_id, cursor)
+        if is_correct == True:
             self.feedback_label.config(text="Correct!", fg="green")
         elif is_correct == False:
             self.feedback_label.config(text=f"Incorrect! The correct answer was: {self.current_answer}", fg="red")
+            cursor.execute('INSERT INTO incorrect_answer (question_id, answer_text) VALUES (?, ?)', (self.current_question_id, user_answer))
+            self.controller.conn.commit()
         else:
-            self.feedback_label.config(text="Uncertain. Please review your answer.", fg="orange")
+            self.feedback_label.config(text=f"Uncertain. The correct answer is: {self.current_answer}", fg="orange")
+            cursor.execute('INSERT INTO incorrect_answer (question_id, answer_text) VALUES (?, ?)', (self.current_question_id, user_answer))
+            self.controller.conn.commit()
+
+        self.answered_questions[self.current_question_id] = 1
+        self.current_attempt += 1
 
     def tkraise(self, aboveThis=None):
         self.load_questions()
+        self.answered_questions = {}
+        self.current_attempt = 0
         super().tkraise(aboveThis)
 
 if __name__ == "__main__":
