@@ -159,8 +159,8 @@ class HomePage(tk.Frame):
         add_card_button = tk.Button(button_frame, text="Add Flashcards", font=controller.custom_font, bg="#2196F3", fg="black", padx=20, pady=10, command=lambda: controller.show_frame("AddFlashcardNamePage"))
         add_card_button.grid(row=0, column=1, padx=10, pady=10)
 
-        settings_button = tk.Button(button_frame, text="Settings", font=controller.custom_font, bg="#FFC107", fg="black", padx=20, pady=10)
-        settings_button.grid(row=0, column=2, padx=10, pady=10)
+        tutor_button = tk.Button(button_frame, text="AI Tutor", font=controller.custom_font, bg="#FFC107", fg="black", padx=20, pady=10)
+        tutor_button.grid(row=0, column=2, padx=10, pady=10)
 
 class AddFlashcardNamePage(tk.Frame):
     def __init__(self, parent, controller):
@@ -198,9 +198,15 @@ class AddQuestionPage(tk.Frame):
         self.answer_text_entry = tk.Entry(self, font=controller.custom_font, width=30)
 
         self.create_widgets()
+    
+    def back_to_study_page(self):
+        global question, score
+        question = 0
+        score = 0
+        self.controller.show_frame("StudyPage")
 
     def create_widgets(self):
-        back_button = tk.Button(self, text="Back", font=self.controller.custom_font, bg="#FF5733", fg="black", command=lambda: self.controller.show_frame("HomePage"))
+        back_button = tk.Button(self, text="Back", font=self.controller.custom_font, bg="#FF5733", fg="black", command=self.back_to_study_page)
         back_button.pack(anchor='nw', padx=10, pady=10)
 
         title_label = tk.Label(self, text="Add Question and Answer", font=self.controller.custom_font, bg="white", fg="#333")
@@ -256,6 +262,9 @@ class StudyPage(tk.Frame):
         title_label = tk.Label(self, text="Select a Flashcard Set", font=controller.custom_font, bg="white", fg="#333")
         title_label.grid(row=0, column=1, pady=20, sticky='n')
 
+        refresh_button = tk.Button(self, text="Refresh", font=controller.custom_font, bg="#4CAF50", fg="black", command=self.refresh_flashcards)
+        refresh_button.grid(row=0, column=2, padx=10, pady=10)
+
         self.canvas = tk.Canvas(self, bg="white")
         self.scrollbar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = tk.Frame(self.canvas, bg="white")
@@ -287,6 +296,14 @@ class StudyPage(tk.Frame):
             flashcard_button = tk.Button(self.centered_frame, text=flashcard_name, font=self.controller.custom_font, bg="#2196F3", fg="black", padx=20, pady=10, command=lambda fid=flashcard_id: self.open_flashcard_detail(fid))
             flashcard_button.pack(pady=10, fill='x', padx=20)
 
+    def refresh_flashcards(self):
+        # Clear current flashcards
+        for widget in self.centered_frame.winfo_children():
+            widget.destroy()
+        
+        # Reload flashcards
+        self.load_flashcards()
+
     def open_flashcard_detail(self, flashcard_id):
         self.controller.current_flashcard_id = flashcard_id
         self.controller.show_frame("FlashcardDetailPage")
@@ -296,6 +313,7 @@ class FlashcardDetailPage(tk.Frame):
         super().__init__(parent)
         self.controller = controller
         self.configure(bg="white")
+
 
         back_button = tk.Button(self, text="Back", font=controller.custom_font, bg="#FF5733", fg="black", command=lambda: controller.show_frame("StudyPage"))
         back_button.pack(anchor='nw', padx=10, pady=10)
@@ -334,7 +352,7 @@ class FlashcardDetailPage(tk.Frame):
         self.current_answer = None
         self.answered_questions = {}
         self.current_attempt = 0
-
+    
     def load_questions(self):
         cursor = self.controller.conn.cursor()
         cursor.execute('''
