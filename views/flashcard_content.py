@@ -9,6 +9,7 @@ database_file_path = os.path.join(directory, 'flashcard.db')
 class FlashcardContent:
     def __init__(self, page: Page):
         self.page = page
+        
 
         self.conn = sqlite3.connect(database_file_path)
         self.cursor = self.conn.cursor()
@@ -48,7 +49,9 @@ class FlashcardContent:
         )
 
     def submit_content(self, e):
-        pass
+        print(variables.current_flashcard_name)
+        variables.flashcards[self.question_text_input.value.strip()] = self.answer_text_input.value.strip()
+        print(variables.flashcards)
 
     def view(self):
         return self.container
