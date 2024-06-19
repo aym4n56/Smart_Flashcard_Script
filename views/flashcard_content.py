@@ -6,35 +6,33 @@ from views import variables  # Import variables from the views folder
 directory = os.path.dirname(os.path.abspath(__file__))
 database_file_path = os.path.join(directory, 'flashcard.db')
 
-class FlashcardContent:
+
+class NameFlashcard:
     def __init__(self, page: Page):
         self.page = page
-        
-
         self.conn = sqlite3.connect(database_file_path)
         self.cursor = self.conn.cursor()
 
         BG = '#041995'
         FG = '#3450a1'
 
-        self.question_text_input = TextField(label='Question', width=300)
-        self.answer_text_input = TextField(label='Answer', width=300)
-        
         def handle_submit_and_next(e):
-            self.submit_content(e)
-            page.go("/")  # Assuming this navigates back to the previous page
+            current_flashcard_name = self.flashcard_name_input.value  # Get user input
+            print(current_flashcard_name)  # Debugging print
+            variables.current_flashcard_name = current_flashcard_name  # Store in variable
+            self.page.go("/flashcard_content")  # Navigate to next page or perform other actions
 
-        flashcard_content = Container(
+        self.flashcard_name_input = TextField(label='Flashcard Name', width=300)
+        
+        name_flashcard = Container(
             content=Column(
                 controls=[
-                    ElevatedButton(text='Back', on_click=lambda _: page.go("/")),
+                    ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
                     Container(height=20),
-                    Text(value='Enter your question and answer:', size=31, weight='bold'),
+                    Text(value='What is your flashcard called?', size=31, weight='bold'),
                     Container(height=20),
-                    self.question_text_input,
-                    self.answer_text_input,
-                    ElevatedButton(text='Submit', on_click=self.submit_content),
-                    ElevatedButton(text='Done', on_click=handle_submit_and_next),
+                    self.flashcard_name_input,
+                    ElevatedButton(text='Next', on_click=handle_submit_and_next),
                 ],
             ),
         )
@@ -45,13 +43,8 @@ class FlashcardContent:
             bgcolor=FG,
             border_radius=35,
             padding=padding.only(top=50, left=20, right=20, bottom=5),
-            content=flashcard_content,
+            content=name_flashcard,
         )
-
-    def submit_content(self, e):
-        print(variables.current_flashcard_name)
-        variables.flashcards[self.question_text_input.value.strip()] = self.answer_text_input.value.strip()
-        print(variables.flashcards)
 
     def view(self):
         return self.container
