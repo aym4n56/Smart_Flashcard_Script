@@ -1,15 +1,9 @@
-import sqlite3
 import os
 from flet import *
-
-directory = os.path.dirname(os.path.abspath(__file__))
-database_file_path = os.path.join(directory, 'flashcard.db')
 
 class Home:
     def __init__(self, page: Page):
         self.page = page
-        self.conn = sqlite3.connect(database_file_path)
-        self.cursor = self.conn.cursor()
 
         BG = '#041995'
         FG = '#3450a1'

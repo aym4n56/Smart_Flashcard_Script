@@ -1,7 +1,7 @@
 import sqlite3
 import os
 from flet import *
-from views import variables  # Import variables from the views folder
+from views import variables 
 
 directory = os.path.dirname(os.path.abspath(__file__))
 database_file_path = os.path.join(directory, 'flashcard.db')
@@ -9,8 +9,6 @@ database_file_path = os.path.join(directory, 'flashcard.db')
 class FlashcardContent:
     def __init__(self, page: Page):
         self.page = page
-        
-
         self.conn = sqlite3.connect(database_file_path)
         self.cursor = self.conn.cursor()
 
@@ -27,7 +25,6 @@ class FlashcardContent:
             self.cursor.execute("INSERT INTO flashcard (flashcard_name) VALUES (?)", (variables.current_flashcard_name,))
             self.cursor.execute("SELECT flashcard_id FROM flashcard WHERE flashcard_name = ?", (variables.current_flashcard_name,))
             flashcard_id = self.cursor.fetchone()[0]
-            self.conn.commit()
 
             for question, answer in variables.flashcards.items():
                 self.cursor.execute("INSERT INTO question (flashcard_id, question_text) VALUES (?, ?)", (flashcard_id, question))
@@ -35,8 +32,11 @@ class FlashcardContent:
                 
                 self.cursor.execute("INSERT INTO correct_answer (question_id, answer_text) VALUES (?, ?)", (question_id, answer))
             self.conn.commit()
+            self.cursor.close()
+            self.conn.close()
 
-            page.go("/")  # Assuming this navigates back to the previous page
+
+            page.go("/") 
 
         flashcard_content = Container(
             content=Column(

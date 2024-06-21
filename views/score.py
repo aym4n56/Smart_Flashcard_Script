@@ -3,6 +3,7 @@ import os
 from flet import *
 from views import variables
 
+
 directory = os.path.dirname(os.path.abspath(__file__))
 database_file_path = os.path.join(directory, 'flashcard.db')
 
@@ -14,15 +15,13 @@ class Score:
 
         BG = '#041995'
         FG = '#3450a1'
-
-        self.question_text = Text(value=variables.question_text, size=20, weight='bold')
         
         score = Container(
             content=Column(
                 controls=[
                     Container(height=70),
                     Text(value="You have achieved 10/10", size=35, weight='bold'),
-                    ElevatedButton(text='Home', on_click = lambda _: self.page.go("/")),
+                    ElevatedButton(text='Home', on_click = self.go_home),
                     Container(height=70),
 
                 ],
@@ -37,6 +36,12 @@ class Score:
             padding=padding.only(top=50, left=20, right=20, bottom=5),
             content=score,
         )
+
+    def go_home(self, e):
+        for question_id, users_answer in variables.new_incorrect_answers.items():
+            self.cursor.execute('''INSERT INTO correct_answer (question_id, answer_text) VALUES (?, ?)''', (question_id, users_answer))
+            self.conn.commit()
+        self.page.go("/")
 
     def view(self):
         return self.container
