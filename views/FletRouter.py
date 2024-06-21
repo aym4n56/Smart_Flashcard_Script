@@ -4,6 +4,7 @@ from views.name_flashcard import NameFlashcard
 from views.flashcard_content import FlashcardContent
 from views.view_flashcard import ViewFlashcard
 from views.pick_flashcard import PickFlashcard
+from views.score import Score
 
 class Router:
 
@@ -14,7 +15,8 @@ class Router:
             "/": Home(page).view(),
             "/name_flashcard": NameFlashcard(page).view(),
             "/flashcard_content": FlashcardContent(page).view(),
-            "/pick_flashcard": PickFlashcard(page).view()
+            "/pick_flashcard": PickFlashcard(page).view(),
+            "/score": Score(page).view()
         }
         self.body = ft.Container(content=self.routes['/'])
 

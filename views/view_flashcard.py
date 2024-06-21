@@ -115,12 +115,15 @@ class ViewFlashcard:
         self.cursor.execute("SELECT question_id, question_text FROM question WHERE flashcard_id = ? ORDER BY question_id ASC", (variables.current_flashcard_id,))
         questions = self.cursor.fetchall()
         current_question_index = next((index for index, question in enumerate(questions) if question[1] == variables.question_text), -1)
-        next_question_index = ((current_question_index + 1) % len(questions))
-        variables.question_text = questions[next_question_index][1]
-        self.question_text.value = variables.question_text
-        print(variables.question_text)
-        self.user_answer_input.value = ""
-        self.page.update()
+        if current_question_index == len(questions) - 1:
+            self.page.go("/score")
+        else:
+            next_question_index = ((current_question_index + 1) % len(questions))
+            variables.question_text = questions[next_question_index][1]
+            self.question_text.value = variables.question_text
+            print(variables.question_text)
+            self.user_answer_input.value = ""
+            self.page.update()
         
 
     def submit_answer(self, e):
