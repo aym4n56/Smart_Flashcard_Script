@@ -23,6 +23,7 @@ current_flashcard_id = ""
 question_text = ""
 current_question_id = ""
 new_incorrect_answers = {}
+learnt_answers = {}
 
 
 class Home:
@@ -32,7 +33,6 @@ class Home:
         BG = '#041995'
         FG = '#3450a1'
 
-        # Define buttons for home screen
         buttons = ft.Column(
             height=400,
             scroll='auto',
@@ -118,7 +118,6 @@ class Home:
     def view(self):
         return self.container
 
-
 class NameFlashcard:
     def __init__(self, page):
         self.page = page
@@ -158,7 +157,6 @@ class NameFlashcard:
 
     def view(self):
         return self.container
-
 
 class FlashcardContent:
     def __init__(self, page):
@@ -230,7 +228,6 @@ class FlashcardContent:
 
     def view(self):
         return self.container
-
 
 class PickFlashcard:
     def __init__(self, page):
@@ -327,7 +324,6 @@ class PickFlashcard:
     def view(self):
         return self.container
 
-
 class ViewFlashcard:
     def __init__(self, page: ft.Page):
         self.page = page
@@ -352,6 +348,7 @@ class ViewFlashcard:
                     ft.ElevatedButton(text='Submit Answer', on_click=self.submit_answer),
                     ft.ElevatedButton(text='Next', on_click=self.next_question),
                     ft.Container(height=20),
+                    ft.ElevatedButton(text='LEARN', on_click=self.learn_answer),
                 ],
             ),
         )
@@ -444,7 +441,6 @@ class ViewFlashcard:
             self.user_answer_input.value = ""
             self.page.update()
 
-        
     def submit_answer(self, e):
         users_answer = self.user_answer_input.value
         conn = sqlite3.connect(database_file_path)
@@ -464,25 +460,41 @@ class ViewFlashcard:
         self.page.snack_bar = ft.SnackBar(content=ft.Text(feedback))
         self.page.snack_bar.open = True
         self.page.update()
+    
+    def learn_answer(self, e):
+        conn = sqlite3.connect(database_file_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT question_id FROM question WHERE question_text = ?", (self.question_text.value,))
+        question_id = cursor.fetchone()[0]
+        
+        if question_id in new_incorrect_answers:
+            learnt_answers[question_id] = new_incorrect_answers.pop(question_id)
+        
+        cursor.close()
+        conn.close()
+        
+        self.page.snack_bar = ft.SnackBar(content=ft.Text("Answer learned!"))
+        self.page.snack_bar.open = True
+        self.page.update()
 
     def view(self):
         return self.container
 
-    
 class Score:
-    def __init__(self, page):
+    def __init__(self, page: ft.Page):
         self.page = page
 
         BG = '#041995'
         FG = '#3450a1'
-
+        
         score = ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard")),
-                    ft.Container(height=20),
-                    ft.Text(value='Here is your score:', size=31, weight='bold'),
-                    ft.Container(height=20),
+                    ft.Container(height=70),
+                    ft.Text(value="You have achieved 10/10", size=35, weight='bold'),
+                    ft.ElevatedButton(text='Home', on_click = self.go_home),
+                    ft.Container(height=70),
+
                 ],
             ),
         )
@@ -496,8 +508,23 @@ class Score:
             content=score,
         )
 
+    def go_home(self, e):
+        self.conn = sqlite3.connect(database_file_path)
+        self.cursor = self.conn.cursor()
+        
+        for question_id, users_answer in learnt_answers.items():
+            self.cursor.execute('''INSERT INTO correct_answer (question_id, answer_text) VALUES (?, ?)''', (question_id, users_answer))
+            self.conn.commit()
+
+        for question_id, users_answer in new_incorrect_answers.items():
+            self.cursor.execute('''INSERT INTO incorrect_answer (question_id, answer_text) VALUES (?, ?)''', (question_id, users_answer))
+            self.conn.commit()
+        self.conn.close()
+        self.page.go("/")
+
     def view(self):
         return self.container
+
     
 class Router:
     def __init__(self, page):
@@ -507,7 +534,7 @@ class Router:
             "/name_flashcard": NameFlashcard(page).view(),
             "/flashcard_content": FlashcardContent(page).view(),
             "/pick_flashcard": PickFlashcard(page).view(),
-            "/view_flashcard": None,  # We'll handle this dynamically
+            "/view_flashcard": None, 
             "/score": Score(page).view(),
         }
 
@@ -519,14 +546,12 @@ class Router:
         self.page.views.append(self.routes.get(route.route, self.routes["/"]))
         self.page.update()
 
-
-
 def main(page: ft.Page):
+    page.theme_mode = ft.ThemeMode.DARK
     router = Router(page)
     page.on_route_change = router.route_change
     page.title = "Flashcard App"
     page.go("/")
-
 
 if __name__ == "__main__":
     ft.app(target=main)
