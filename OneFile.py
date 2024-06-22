@@ -7,6 +7,7 @@ from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import re
+import openai
 
 nltk.download('wordnet')
 nltk.download('stopwords')
@@ -25,11 +26,12 @@ current_question_id = ""
 new_incorrect_answers = {}
 learnt_answers = {}
 
+openai.api_key = 'add your api key'
+
 
 class Home:
     def __init__(self, page):
         self.page = page
-
         BG = '#041995'
         FG = '#3450a1'
 
@@ -80,6 +82,7 @@ class Home:
                     width=400,
                     bgcolor=BG,
                     border_radius=25,
+                    on_click=lambda _: page.go("/ai_tutor"),
                     content=ft.Row(
                         alignment='center',
                         controls=[
@@ -171,7 +174,6 @@ class FlashcardContent:
         def handle_done(e):
             global current_flashcard_name, flashcards
 
-            # Open new connection
             conn = sqlite3.connect(database_file_path)
             cursor = conn.cursor()
 
@@ -299,7 +301,6 @@ class PickFlashcard:
         selected_flashcard = name
         print(selected_flashcard)
         
-        # Open new connection
         conn = sqlite3.connect(database_file_path)
         cursor = conn.cursor()
         cursor.execute("SELECT flashcard_id FROM flashcard WHERE flashcard_name = ?", (selected_flashcard,))
@@ -524,7 +525,71 @@ class Score:
 
     def view(self):
         return self.container
+    
+class AITutor:
+    def __init__(self, page):
+        self.page = page
 
+        BG = '#041995'
+        FG = '#3450a1'
+
+        self.question_text_input = ft.TextField(label='Question', width=400)
+        self.ai_answer_output = ft.Text(value='', size=20)
+
+        ai_tutor_screen = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.ElevatedButton(text='Back', on_click=lambda _: page.go("/")),
+                    ft.Container(height=20),
+                    ft.Text(value='Ask me anything!', size=31, weight='bold'),
+                    ft.Container(height=20),
+                    self.question_text_input,
+                    ft.ElevatedButton(text='Ask AI', on_click=self.ask_ai),
+                    ft.Container(height=20),
+                    self.ai_answer_output,
+                ],
+            ),
+        )
+
+        self.container = ft.Container(
+            width=400,
+            height=850,
+            bgcolor=FG,
+            border_radius=35,
+            padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
+            content=ai_tutor_screen,
+        )
+
+    def ask_ai(self, e):
+        question = self.question_text_input.value.strip()
+
+        if question:
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": question}],
+                    stream=True
+                )
+
+                answer = ""
+                for message in response:
+                    delta = message['choices'][0]['delta']
+                    content = delta.get('content', '')
+                    answer += content
+                    self.ai_answer_output.value = answer
+                    self.page.update()
+                
+            except Exception as ex:
+                print(f"Error asking AI: {ex}")
+                self.ai_answer_output.value = "Error: AI could not provide an answer."
+        else:
+            self.ai_answer_output.value = "Please enter a question."
+
+        self.page.update()
+
+
+    def view(self):
+        return self.container
     
 class Router:
     def __init__(self, page):
@@ -536,6 +601,7 @@ class Router:
             "/pick_flashcard": PickFlashcard(page).view(),
             "/view_flashcard": None, 
             "/score": Score(page).view(),
+             "/ai_tutor": AITutor(page).view()
         }
 
     def route_change(self, route):
