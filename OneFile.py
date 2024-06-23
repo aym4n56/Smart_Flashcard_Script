@@ -6,14 +6,18 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
 import re
 import openai
+from ucimlrepo import fetch_ucirepo 
+import pandas as pd
 
 nltk.download('wordnet')
 nltk.download('stopwords')
 nltk.download('punkt')
 
-# Database file path
 database_file_path = 'flashcard.db'
 
 # Global variables
@@ -26,7 +30,7 @@ current_question_id = ""
 new_incorrect_answers = {}
 learnt_answers = {}
 
-openai.api_key = 'add your api key'
+openai.api_key = ''
 
 
 class Home:
@@ -70,10 +74,11 @@ class Home:
                     width=400,
                     bgcolor=BG,
                     border_radius=25,
+                    on_click=lambda _: page.go("/grade_predictor"),
                     content=ft.Row(
                         alignment='center',
                         controls=[
-                            ft.Text(value="Average Marks", color='white'),
+                            ft.Text(value="Grade Predictor", color='white'),
                         ],
                     )
                 ),
@@ -534,21 +539,29 @@ class AITutor:
         FG = '#3450a1'
 
         self.question_text_input = ft.TextField(label='Question', width=400)
-        self.ai_answer_output = ft.Text(value='', size=20)
+        self.ai_answer_output = ft.Text(value='', size=15)
 
-        ai_tutor_screen = ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.ElevatedButton(text='Back', on_click=lambda _: page.go("/")),
-                    ft.Container(height=20),
-                    ft.Text(value='Ask me anything!', size=31, weight='bold'),
-                    ft.Container(height=20),
-                    self.question_text_input,
-                    ft.ElevatedButton(text='Ask AI', on_click=self.ask_ai),
-                    ft.Container(height=20),
-                    self.ai_answer_output,
-                ],
-            ),
+        ai_tutor_screen = ft.Column(
+            controls=[
+                ft.ElevatedButton(text='Back', on_click=lambda _: page.go("/")),
+                ft.Container(height=20),
+                ft.Text(value='Ask me anything!', size=31, weight='bold'),
+                ft.Container(height=20),
+                self.question_text_input,
+                ft.ElevatedButton(text='Ask AI', on_click=self.ask_ai),
+                ft.Container(height=20),
+                ft.Container(
+                    width=400,
+                    height=400,
+                    padding=10,
+                    bgcolor=FG,
+                    border_radius=0,
+                    content=ft.Column(
+                        controls=[self.ai_answer_output],
+                        scroll='auto',
+                    )
+                ),
+            ]
         )
 
         self.container = ft.Container(
@@ -557,7 +570,7 @@ class AITutor:
             bgcolor=FG,
             border_radius=35,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=ai_tutor_screen,
+            content=ai_tutor_screen
         )
 
     def ask_ai(self, e):
@@ -578,7 +591,7 @@ class AITutor:
                     answer += content
                     self.ai_answer_output.value = answer
                     self.page.update()
-                
+
             except Exception as ex:
                 print(f"Error asking AI: {ex}")
                 self.ai_answer_output.value = "Error: AI could not provide an answer."
@@ -587,9 +600,9 @@ class AITutor:
 
         self.page.update()
 
-
     def view(self):
         return self.container
+
     
 class Router:
     def __init__(self, page):
@@ -601,7 +614,7 @@ class Router:
             "/pick_flashcard": PickFlashcard(page).view(),
             "/view_flashcard": None, 
             "/score": Score(page).view(),
-             "/ai_tutor": AITutor(page).view()
+             "/ai_tutor": AITutor(page).view(),
         }
 
     def route_change(self, route):
