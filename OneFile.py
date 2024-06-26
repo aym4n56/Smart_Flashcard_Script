@@ -29,9 +29,10 @@ question_text = ""
 current_question_id = ""
 new_incorrect_answers = {}
 learnt_answers = {}
+score = 0
+total = 0
 
-openai.api_key = ''
-
+openai.api_key = 'use ur API key here'
 
 class Home:
     def __init__(self, page):
@@ -336,6 +337,9 @@ class ViewFlashcard:
         self.lemmatizer = WordNetLemmatizer()
         self.stop_words = set(stopwords.words('english'))
         self.similarity_threshold = 0.7
+        global score, total
+        score = int(0)
+        total = int(0)
 
         BG = '#041995'
         FG = '#3450a1'
@@ -351,8 +355,7 @@ class ViewFlashcard:
                     self.question_text,
                     ft.Container(height=20),
                     self.user_answer_input,
-                    ft.ElevatedButton(text='Submit Answer', on_click=self.submit_answer),
-                    ft.ElevatedButton(text='Next', on_click=self.next_question),
+                    ft.ElevatedButton(text='Check', on_click=self.submit_answer),
                     ft.Container(height=20),
                     ft.ElevatedButton(text='LEARN', on_click=self.learn_answer),
                 ],
@@ -448,6 +451,7 @@ class ViewFlashcard:
             self.page.update()
 
     def submit_answer(self, e):
+        global score, total
         users_answer = self.user_answer_input.value
         conn = sqlite3.connect(database_file_path)
         cursor = conn.cursor()
@@ -458,8 +462,12 @@ class ViewFlashcard:
 
         if self.is_correct_answer(users_answer, question_id):
             feedback = "Correct!"
+            score = score + 1
+            total = total + 1
+            self.next_question(e)
         else:
             feedback = "Incorrect. Try again."
+            total + 1
             new_incorrect_answers[question_id] = users_answer
             print(new_incorrect_answers)
         
@@ -478,6 +486,8 @@ class ViewFlashcard:
         
         cursor.close()
         conn.close()
+
+        score = score + 1
         
         self.page.snack_bar = ft.SnackBar(content=ft.Text("Answer learned!"))
         self.page.snack_bar.open = True
@@ -490,6 +500,8 @@ class Score:
     def __init__(self, page: ft.Page):
         self.page = page
 
+        global score, total
+
         BG = '#041995'
         FG = '#3450a1'
         
@@ -497,7 +509,7 @@ class Score:
             content=ft.Column(
                 controls=[
                     ft.Container(height=70),
-                    ft.Text(value="You have achieved 10/10", size=35, weight='bold'),
+                    ft.Text(value=f"You have achieved {score} out of {total}", size=35, weight='bold'),
                     ft.ElevatedButton(text='Home', on_click = self.go_home),
                     ft.Container(height=70),
 
@@ -613,7 +625,7 @@ class Router:
             "/flashcard_content": FlashcardContent(page).view(),
             "/pick_flashcard": PickFlashcard(page).view(),
             "/view_flashcard": None, 
-            "/score": Score(page).view(),
+            "/score": None,
              "/ai_tutor": AITutor(page).view(),
         }
 
@@ -622,6 +634,9 @@ class Router:
         if route.route == '/view_flashcard':
             view_flashcard = ViewFlashcard(self.page)
             self.routes["/view_flashcard"] = view_flashcard.view()
+        if route.route == '/score':
+            scorePage = Score(self.page)
+            self.routes["/score"] = scorePage.view()
         self.page.views.append(self.routes.get(route.route, self.routes["/"]))
         self.page.update()
 
