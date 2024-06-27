@@ -32,7 +32,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'use ur API key here'
+openai.api_key = 'use ur api key'
 
 class Home:
     def __init__(self, page):
@@ -336,7 +336,7 @@ class ViewFlashcard:
         self.page = page
         self.lemmatizer = WordNetLemmatizer()
         self.stop_words = set(stopwords.words('english'))
-        self.similarity_threshold = 0.7
+        self.similarity_threshold = 0.9
         global score, total
         score = int(0)
         total = int(0)
@@ -468,6 +468,7 @@ class ViewFlashcard:
         else:
             feedback = "Incorrect. Try again."
             total + 1
+            score = score - 1
             new_incorrect_answers[question_id] = users_answer
             print(new_incorrect_answers)
         
