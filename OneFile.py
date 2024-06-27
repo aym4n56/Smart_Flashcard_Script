@@ -7,12 +7,12 @@ from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import accuracy_score
 import re
 import openai
-from ucimlrepo import fetch_ucirepo 
 import pandas as pd
+import numpy as np
 
 nltk.download('wordnet')
 nltk.download('stopwords')
@@ -615,7 +615,102 @@ class AITutor:
 
     def view(self):
         return self.container
+    
+class GradePredictor:
+    def __init__(self, page: ft.Page):
+        self.page = page
 
+        BG = '#041995'
+        FG = '#3450a1'
+
+        self.question_text = ft.Text(value="How old are you?", size=15, weight='bold')
+        self.user_age_input = ft.TextField(label='Age', width=400)
+
+        self.activities_text = ft.Text(value="Do you participate in extra-curricular activities? (yes/no)", size=15, weight='bold')
+        self.user_activities_input = ft.TextField(label='Activities', width=400)
+
+        self.studytime_text = ft.Text(value="How many hours do you study per day?", size=15, weight='bold')
+        self.user_studytime_input = ft.TextField(label='Study Time', width=400)
+        
+        self.grade_prediction_result = ft.Text(value="", size=20, weight='bold')
+
+        grade_predictor = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+                    ft.Container(height=20),
+                    self.question_text,
+                    ft.Container(height=5),
+                    self.user_age_input,
+                    self.activities_text,
+                    ft.Container(height=5),
+                    self.user_activities_input,
+                    self.studytime_text,
+                    ft.Container(height=5),
+                    self.user_studytime_input,
+                    ft.ElevatedButton(text='Next', on_click=self.next),
+                    ft.Container(height=20),
+                    self.grade_prediction_result,
+                ],
+            ),
+        )
+
+        self.data_math = pd.read_csv('/Users/ayman/Desktop/Onefile/student/student-mat.csv', sep=';')
+        self.data_math['activities'] = self.data_math['activities'].apply(lambda x: 1 if x == 'yes' else 0)
+
+        # Selecting relevant columns for model training
+        self.X_numerical = self.data_math[['studytime', 'age', 'activities']]
+        self.y_numerical = self.data_math[['G3']]  # 'G3' is the final grade in Mathematics
+
+        # Splitting data into train and test sets
+        self.X_train_num, self.X_test_num, self.y_train_num, self.y_test_num = train_test_split(
+            self.X_numerical, self.y_numerical, test_size=0.2, random_state=0)
+
+        # Creating an instance of the model
+        self.lm_num = LinearRegression()
+
+        # Training the model
+        self.lm_num.fit(self.X_train_num, self.y_train_num)
+
+
+        self.container = ft.Container(
+            width=400,
+            height=850,
+            bgcolor=FG,
+            border_radius=35,
+            padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
+            content=grade_predictor,
+        )
+
+    def next(self, e):
+         # Retrieve user inputs from GUI
+        age = int(self.user_age_input.value)
+        activities = self.user_activities_input.value.lower()
+        daily_hours = float(self.user_studytime_input.value)
+        hours_studied = float(daily_hours * 7)
+        activities_binary = 1 if activities == 'yes' else 0
+
+        # Predicting the score based on user input
+        hrs = pd.DataFrame([[hours_studied, age, activities_binary]], columns=['studytime', 'age', 'activities'])
+
+        # Predicting the score using the trained model
+        predicted_score = self.lm_num.predict(hrs)[0][0]
+
+        # Setting minimum and maximum test score
+        min_score = 0
+        max_score = 20  # Adjust based on the actual grade range
+
+        # Clamping the predicted score within the specified range
+        predicted_score = max(min(predicted_score, max_score), min_score)
+
+        percentage_score = int((predicted_score / 20) * 100)
+
+        # Display the predicted score in the GUI
+        self.grade_prediction_result.value = f"Based on the information you have given you will likely achieve: {percentage_score}%"
+        self.page.update()
+
+    def view(self):
+        return self.container
     
 class Router:
     def __init__(self, page):
@@ -627,17 +722,25 @@ class Router:
             "/pick_flashcard": PickFlashcard(page).view(),
             "/view_flashcard": None, 
             "/score": None,
-             "/ai_tutor": AITutor(page).view(),
+            "/ai_tutor": AITutor(page).view(),
+            "/grade_predictor": None,
         }
 
     def route_change(self, route):
         self.page.views.clear()
+        
         if route.route == '/view_flashcard':
             view_flashcard = ViewFlashcard(self.page)
             self.routes["/view_flashcard"] = view_flashcard.view()
+        
         if route.route == '/score':
             scorePage = Score(self.page)
             self.routes["/score"] = scorePage.view()
+        
+        if route.route == '/grade_predictor':
+            grade_predictor = GradePredictor(self.page)
+            self.routes["/grade_predictor"] = grade_predictor.view()
+
         self.page.views.append(self.routes.get(route.route, self.routes["/"]))
         self.page.update()
 
