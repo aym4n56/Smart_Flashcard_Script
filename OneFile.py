@@ -19,6 +19,7 @@ nltk.download('stopwords')
 nltk.download('punkt')
 
 database_file_path = 'flashcard.db'
+student_path = 'student/student-mat.csv'
 
 # Global variables
 current_flashcard_name = ""
@@ -32,7 +33,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'use ur api key'
+openai.api_key = 'use ur own api key here'
 
 class Home:
     def __init__(self, page):
@@ -209,6 +210,9 @@ class FlashcardContent:
                     self.answer_text_input,
                     ft.ElevatedButton(text='Submit', on_click=self.submit_content),
                     ft.ElevatedButton(text='Done', on_click=handle_done),
+                    ft.Container(height=20),
+                    ft.Text(value='Please make sure you press submit on every question before pressing done!', size=15, weight='bold'),
+
                 ],
             ),
         )
@@ -477,6 +481,7 @@ class ViewFlashcard:
         self.page.update()
     
     def learn_answer(self, e):
+        global score, total
         conn = sqlite3.connect(database_file_path)
         cursor = conn.cursor()
         cursor.execute("SELECT question_id FROM question WHERE question_text = ?", (self.question_text.value,))
@@ -489,9 +494,12 @@ class ViewFlashcard:
         conn.close()
 
         score = score + 1
+        total = total + 1
         
         self.page.snack_bar = ft.SnackBar(content=ft.Text("Answer learned!"))
         self.page.snack_bar.open = True
+        self.page.update()
+        self.next_question(e)
         self.page.update()
 
     def view(self):
@@ -655,7 +663,7 @@ class GradePredictor:
             ),
         )
 
-        self.data_math = pd.read_csv('/Users/ayman/Desktop/Onefile/student/student-mat.csv', sep=';')
+        self.data_math = pd.read_csv(student_path, sep=';')
         self.data_math['activities'] = self.data_math['activities'].apply(lambda x: 1 if x == 'yes' else 0)
 
         # Selecting relevant columns for model training
@@ -690,22 +698,17 @@ class GradePredictor:
         hours_studied = float(daily_hours * 7)
         activities_binary = 1 if activities == 'yes' else 0
 
-        # Predicting the score based on user input
         hrs = pd.DataFrame([[hours_studied, age, activities_binary]], columns=['studytime', 'age', 'activities'])
 
-        # Predicting the score using the trained model
         predicted_score = self.lm_num.predict(hrs)[0][0]
 
-        # Setting minimum and maximum test score
         min_score = 0
-        max_score = 20  # Adjust based on the actual grade range
+        max_score = 20 
 
-        # Clamping the predicted score within the specified range
         predicted_score = max(min(predicted_score, max_score), min_score)
 
         percentage_score = int((predicted_score / 20) * 100)
 
-        # Display the predicted score in the GUI
         self.grade_prediction_result.value = f"Based on the information you have given you will likely achieve: {percentage_score}%"
         self.page.update()
 
