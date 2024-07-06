@@ -27,13 +27,14 @@ flashcards = {}
 selected_flashcard = ""
 current_flashcard_id = ""
 question_text = ""
+answer_text = ""
 current_question_id = ""
 new_incorrect_answers = {}
 learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'use ur own api key here'
+openai.api_key = 'use ur own api key!!'
 
 class Home:
     def __init__(self, page):
@@ -57,6 +58,19 @@ class Home:
                             ft.Text(value="Create Flashcard", color='white'),
                         ],
                     ),
+                ),
+                ft.Container(
+                    height=70,
+                    width=400,
+                    bgcolor=BG,
+                    border_radius=25,
+                    on_click=lambda _: page.go("/pick_flashcard_two"),
+                    content=ft.Row(
+                        alignment='center',
+                        controls=[
+                            ft.Text(value="View Flashcards", color='white'),
+                        ],
+                    )
                 ),
                 ft.Container(
                     height=70,
@@ -261,7 +275,7 @@ class PickFlashcard:
                 controls=[
                     ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
                     ft.Container(height=20),
-                    ft.Text(value='What would you like to revise?', size=31, weight='bold'),
+                    ft.Text(value='What would you like to test yourself on?', size=31, weight='bold'),
                     ft.Container(height=20),
                     ft.Stack(
                         controls=[
@@ -331,6 +345,100 @@ class PickFlashcard:
         conn.close()
         self.page.update()
         self.page.go("/view_flashcard")
+
+    def view(self):
+        return self.container
+    
+class PickFlashcard_two:
+    def __init__(self, page):
+        self.page = page
+
+        BG = '#041995'
+        FG = '#3450a1'
+
+        flashcard_rectangles = ft.Column(
+            height=400,
+            scroll='auto',
+            controls=[]
+        )
+
+        self.update_flashcards(flashcard_rectangles)
+
+        pick_flashcard_two = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+                    ft.Container(height=20),
+                    ft.Text(value='What would you like to revise?', size=31, weight='bold'),
+                    ft.Container(height=20),
+                    ft.Stack(
+                        controls=[
+                            flashcard_rectangles,
+                        ]
+                    )
+                ],
+            ),
+        )
+
+        self.container = ft.Container(
+            width=400,
+            height=850,
+            bgcolor=FG,
+            border_radius=35,
+            padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
+            content=pick_flashcard_two,
+        )
+
+    def update_flashcards(self, flashcard_rectangles):
+        conn = sqlite3.connect(database_file_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT flashcard_name FROM flashcard")
+        flashcards = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        flashcard_rectangles.controls = [
+            ft.Container(
+                height=70,
+                width=400,
+                bgcolor='#041995',
+                border_radius=25,
+                on_click=lambda _, name=flashcard[0]: self.select_flashcard(name),
+                content=ft.Row(
+                    alignment='center',
+                    controls=[
+                        ft.Text(value=flashcard[0], color='white'),
+                    ],
+                )
+            ) for flashcard in flashcards
+        ]
+        self.page.update()
+
+    def select_flashcard(self, name):
+        global current_flashcard_id, question_text
+        selected_flashcard = name
+        print(selected_flashcard)
+        
+        conn = sqlite3.connect(database_file_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT flashcard_id FROM flashcard WHERE flashcard_name = ?", (selected_flashcard,))
+        result = cursor.fetchone()
+        if result:
+            current_flashcard_id = result[0]
+            print(f"Flashcard ID: {current_flashcard_id}")
+            cursor.execute("SELECT question_text FROM question WHERE flashcard_id = ? LIMIT 1", (current_flashcard_id,))
+            question_result = cursor.fetchone()
+            if question_result:
+                question_text = question_result[0]
+                print(question_text)
+            else:
+                print("No question")
+        else:
+            print("Flashcard not found or result is empty")
+        cursor.close()
+        conn.close()
+        self.page.update()
+        self.page.go("/view_flashcard_two")
 
     def view(self):
         return self.container
@@ -493,7 +601,7 @@ class ViewFlashcard:
         cursor.close()
         conn.close()
 
-        score = score + 1
+        score = score + 2
         total = total + 1
         
         self.page.snack_bar = ft.SnackBar(content=ft.Text("Answer learned!"))
@@ -501,6 +609,77 @@ class ViewFlashcard:
         self.page.update()
         self.next_question(e)
         self.page.update()
+
+    def view(self):
+        return self.container
+
+class ViewFlashcard_two:
+    def __init__(self, page: ft.Page):
+        self.page = page
+
+        self.BG = '#041995'
+        self.FG = '#3450a1'
+
+        self.question_text = ft.Text(value='', size=20, weight='bold')
+        self.answer_text = ft.Text(value='', size=20, weight='bold')
+        
+        self.questions = self.load_questions()
+        self.current_question_index = -1
+        self.next_question(None)
+
+        view_flashcard_two = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard_two")),
+                    ft.Container(height=20),
+                    self.question_text,
+                    ft.Container(height=20),
+                    self.answer_text,
+                    ft.ElevatedButton(text='Next', on_click=self.next_question),
+                ],
+            ),
+        )
+
+        self.container = ft.Container(
+            width=400,
+            height=850,
+            bgcolor=self.FG,
+            border_radius=35,
+            padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
+            content=view_flashcard_two,
+        )
+
+    def load_questions(self):
+        conn = sqlite3.connect(database_file_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT question_id, question_text FROM question WHERE flashcard_id = ? ORDER BY question_id ASC", (current_flashcard_id,))
+        questions = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return questions
+
+    def next_question(self, e):
+        self.current_question_index = (self.current_question_index + 1) % len(self.questions)
+
+        if self.current_question_index == 0 and e: 
+            self.page.go("/pick_flashcard_two")
+            return
+
+        question_id, question_text = self.questions[self.current_question_index]
+        
+        self.question_text.value = question_text
+        self.answer_text.value = self.load_answer(question_id)
+        
+        self.page.update()
+
+    def load_answer(self, question_id):
+        conn = sqlite3.connect(database_file_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT answer_text FROM correct_answer WHERE question_id = ?", (question_id,))
+        answer = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return answer[0] if answer else "No answer found"
 
     def view(self):
         return self.container
@@ -567,6 +746,7 @@ class AITutor:
                 ft.ElevatedButton(text='Back', on_click=lambda _: page.go("/")),
                 ft.Container(height=20),
                 ft.Text(value='Ask me anything!', size=31, weight='bold'),
+                ft.Text(value='Tip: Try typying "Explain" followed by a topic you are unsure about.', size=10,),
                 ft.Container(height=20),
                 self.question_text_input,
                 ft.ElevatedButton(text='Ask AI', on_click=self.ask_ai),
@@ -596,7 +776,6 @@ class AITutor:
 
     def ask_ai(self, e):
         question = self.question_text_input.value.strip()
-
         if question:
             try:
                 response = openai.ChatCompletion.create(
@@ -646,7 +825,7 @@ class GradePredictor:
             content=ft.Column(
                 controls=[
                     ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
-                    ft.Container(height=20),
+                    ft.Container(height=2),
                     self.question_text,
                     ft.Container(height=5),
                     self.user_age_input,
@@ -723,6 +902,7 @@ class Router:
             "/name_flashcard": NameFlashcard(page).view(),
             "/flashcard_content": FlashcardContent(page).view(),
             "/pick_flashcard": PickFlashcard(page).view(),
+            "/pick_flashcard_two": PickFlashcard_two(page).view(),
             "/view_flashcard": None, 
             "/score": None,
             "/ai_tutor": AITutor(page).view(),
@@ -735,6 +915,10 @@ class Router:
         if route.route == '/view_flashcard':
             view_flashcard = ViewFlashcard(self.page)
             self.routes["/view_flashcard"] = view_flashcard.view()
+        
+        if route.route == '/view_flashcard_two':
+            view_flashcard_two = ViewFlashcard_two(self.page)
+            self.routes["/view_flashcard_two"] = view_flashcard_two.view()
         
         if route.route == '/score':
             scorePage = Score(self.page)
