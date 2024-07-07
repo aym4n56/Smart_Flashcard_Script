@@ -34,7 +34,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'use ur own api key!!'
+openai.api_key = 'use ur own api key here'
 
 class Home:
     def __init__(self, page):
@@ -111,6 +111,19 @@ class Home:
                         ],
                     )
                 ),
+                ft.Container(
+                    height=70,
+                    width=400,
+                    bgcolor=BG,
+                    border_radius=25,
+                    on_click=lambda _: page.go("/settings"),
+                    content=ft.Row(
+                        alignment='center',
+                        controls=[
+                            ft.Text(value="Settings", color='white'),
+                        ],
+                    )
+                ),
             ]
         )
 
@@ -119,7 +132,8 @@ class Home:
                 controls=[
                     ft.Container(height=20),
                     ft.Text(value='Welcome to the Flashcard App!', size=31, weight='bold'),
-                    ft.Text(value='Choose an option from below:'),
+                    ft.Text(value='Choose an option from below.'),
+                    ft.Text(value='Tip: Scroll for settings!'),
                     ft.Container(height=20),
                     ft.Stack(
                         controls=[
@@ -893,7 +907,162 @@ class GradePredictor:
 
     def view(self):
         return self.container
-    
+
+class Settings:
+    def __init__(self, page):
+        self.page = page
+        BG = '#041995'
+        FG = '#3450a1'
+
+        buttons = ft.Column(
+            height=400,
+            scroll='auto',
+            controls=[
+                ft.Container(
+                    height=70,
+                    width=400,
+                    bgcolor=BG,
+                    border_radius=25,
+                    on_click=lambda _: page.go("/delete_flashcard"),
+                    content=ft.Row(
+                        alignment='center',
+                        controls=[
+                            ft.Text(value="Delete Flashcard", color='white'),
+                        ],
+                    ),
+                ),
+            ]
+        )
+
+        settings = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+                    ft.Container(height=20),
+                    ft.Text(value='Settings', size=31, weight='bold'),
+                    ft.Text(value='Choose an option from below:'),
+                    ft.Container(height=20),
+                    ft.Stack(
+                        controls=[
+                            buttons,
+                        ]
+                    )
+                ],
+            ),
+        )
+
+        self.container = ft.Container(
+            width=400,
+            height=850,
+            bgcolor=FG,
+            border_radius=35,
+            padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
+            content=settings,
+        )
+
+    def view(self):
+        return self.container
+
+class DeleteFlashcard:
+    def __init__(self, page):
+        self.page = page
+
+        BG = '#041995'
+        FG = '#3450a1'
+
+        flashcard_rectangles = ft.Column(
+            height=400,
+            scroll='auto',
+            controls=[]
+        )
+
+        self.update_flashcards(flashcard_rectangles)
+
+        delete_flashcard = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/settings")),
+                    ft.Container(height=20),
+                    ft.Text(value='What would you like to delete?', size=31, weight='bold'),
+                    ft.Text(value='Be careful, once you press a flashcard it will be gone forever.'),
+                    ft.Container(height=20),
+                    ft.Stack(
+                        controls=[
+                            flashcard_rectangles,
+                        ]
+                    )
+                ],
+            ),
+        )
+
+        self.container = ft.Container(
+            width=400,
+            height=850,
+            bgcolor=FG,
+            border_radius=35,
+            padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
+            content=delete_flashcard,
+        )
+
+    def update_flashcards(self, flashcard_rectangles):
+        conn = sqlite3.connect(database_file_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT flashcard_name FROM flashcard")
+        flashcards = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        flashcard_rectangles.controls = [
+            ft.Container(
+                height=70,
+                width=400,
+                bgcolor='#041995',
+                border_radius=25,
+                on_click=lambda _, name=flashcard[0]: self.delete_flashcard(name),
+                content=ft.Row(
+                    alignment='center',
+                    controls=[
+                        ft.Text(value=flashcard[0], color='white'),
+                    ],
+                )
+            ) for flashcard in flashcards
+        ]
+        self.page.update()
+
+    def delete_flashcard(self, name):
+        conn = sqlite3.connect(database_file_path)
+        cursor = conn.cursor()
+        
+        # Get the flashcard_id of the selected flashcard
+        cursor.execute("SELECT flashcard_id FROM flashcard WHERE flashcard_name = ?", (name,))
+        result = cursor.fetchone()
+        if result:
+            flashcard_id = result[0]
+            # Delete associated incorrect answers
+            cursor.execute("DELETE FROM incorrect_answer WHERE question_id IN (SELECT question_id FROM question WHERE flashcard_id = ?)", (flashcard_id,))
+            # Delete associated correct answers
+            cursor.execute("DELETE FROM correct_answer WHERE question_id IN (SELECT question_id FROM question WHERE flashcard_id = ?)", (flashcard_id,))
+            # Delete associated questions
+            cursor.execute("DELETE FROM question WHERE flashcard_id = ?", (flashcard_id,))
+            # Delete the flashcard itself
+            cursor.execute("DELETE FROM flashcard WHERE flashcard_id = ?", (flashcard_id,))
+            conn.commit()
+            print(f"Deleted flashcard {name} and its associated data.")
+        else:
+            print(f"Flashcard {name} not found.")
+        
+        cursor.close()
+        conn.close()
+        
+        # Refresh the flashcards list
+        self.page.snack_bar = ft.SnackBar(content=ft.Text("Flashcard Deleted"))
+        self.page.snack_bar.open = True
+        self.update_flashcards(ft.Column(height=400, scroll='auto', controls=[]))
+        self.page.update()
+
+    def view(self):
+        return self.container
+
 class Router:
     def __init__(self, page):
         self.page = page
@@ -903,10 +1072,12 @@ class Router:
             "/flashcard_content": FlashcardContent(page).view(),
             "/pick_flashcard": PickFlashcard(page).view(),
             "/pick_flashcard_two": PickFlashcard_two(page).view(),
+            "/delete_flashcard": DeleteFlashcard(page).view(),
             "/view_flashcard": None, 
             "/score": None,
             "/ai_tutor": AITutor(page).view(),
             "/grade_predictor": None,
+            "/settings": Settings(page).view(),
         }
 
     def route_change(self, route):
