@@ -34,7 +34,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'use ur own api key here'
+openai.api_key = 'use ur own api key here!'
 
 class Home:
     def __init__(self, page):
@@ -233,14 +233,13 @@ class FlashcardContent:
                     ft.ElevatedButton(text='Back', on_click=lambda _: page.go("/")),
                     ft.Container(height=20),
                     ft.Text(value='Enter your question and answer:', size=31, weight='bold'),
+                    ft.Text(value='Please make sure you press submit on every question before pressing done!'),
                     ft.Container(height=20),
                     self.question_text_input,
                     self.answer_text_input,
                     ft.ElevatedButton(text='Submit', on_click=self.submit_content),
                     ft.ElevatedButton(text='Done', on_click=handle_done),
                     ft.Container(height=20),
-                    ft.Text(value='Please make sure you press submit on every question before pressing done!', size=15, weight='bold'),
-
                 ],
             ),
         )
@@ -479,10 +478,11 @@ class ViewFlashcard:
                     ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard")),
                     ft.Container(height=20),
                     self.question_text,
+                    ft.Text(value="Use the LEARN button if you're answer is correct but isnt recognised, this will improve answer detection in the future."),
                     ft.Container(height=20),
                     self.user_answer_input,
                     ft.ElevatedButton(text='Check', on_click=self.submit_answer),
-                    ft.Container(height=20),
+                    ft.Container(height=2),
                     ft.ElevatedButton(text='LEARN', on_click=self.learn_answer),
                 ],
             ),
@@ -760,7 +760,7 @@ class AITutor:
                 ft.ElevatedButton(text='Back', on_click=lambda _: page.go("/")),
                 ft.Container(height=20),
                 ft.Text(value='Ask me anything!', size=31, weight='bold'),
-                ft.Text(value='Tip: Try typying "Explain" followed by a topic you are unsure about.', size=10,),
+                ft.Text(value='Tip: Try typing "Explain" followed by a topic you are unsure about.'),
                 ft.Container(height=20),
                 self.question_text_input,
                 ft.ElevatedButton(text='Ask AI', on_click=self.ask_ai),
