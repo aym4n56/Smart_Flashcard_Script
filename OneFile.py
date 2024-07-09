@@ -1,4 +1,5 @@
 import flet as ft
+from flet import *
 import sqlite3
 import os
 import nltk
@@ -13,6 +14,8 @@ import re
 import openai
 import pandas as pd
 import numpy as np
+from gtts import gTTS
+import random
 
 nltk.download('wordnet')
 nltk.download('stopwords')
@@ -34,7 +37,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'use ur own api key here!'
+openai.api_key = 'use ur own api key here'
 
 class Home:
     def __init__(self, page):
@@ -471,13 +474,18 @@ class ViewFlashcard:
 
         self.user_answer_input = ft.TextField(label='Answer', width=400)
         self.question_text = ft.Text(value=question_text, size=20, weight='bold')
-        
+        self.audio =  Audio(src=False)
+        self.page.overlay.append(self.audio)
+
         view_flashcard = ft.Container(
             content=ft.Column(
                 controls=[
                     ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard")),
                     ft.Container(height=20),
-                    self.question_text,
+                    ft.GestureDetector(    
+                        self.question_text,
+                        on_tap= self.say_question,
+                    ),
                     ft.Text(value="Use the LEARN button if you're answer is correct but isnt recognised, this will improve answer detection in the future."),
                     ft.Container(height=20),
                     self.user_answer_input,
@@ -496,6 +504,28 @@ class ViewFlashcard:
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
             content=view_flashcard,
         )
+
+    def remove_all_files_in_folder(self):
+        folder_path = "result/"
+        files = os.listdir(folder_path)
+        for file in files:
+            file_path = os.path.join(folder_path, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+                print(f"File removed successfully: {file_path}")
+    
+    def say_question(self, e):
+        try:
+            self.remove_all_files_in_folder()
+            tts = gTTS(text=self.question_text.value, lang="en")
+            file_name = f"result/{random.randint(0, 100)}.mp3"
+            tts.save(file_name)
+            self.audio.src = file_name
+            self.audio.play()
+            self.page.update()
+        except Exception as ex:
+            print(f"Error: {ex}")
+            print("Error: Sound playback failed!")
 
     def preprocess_text(self, text):
         words = nltk.word_tokenize(text)
@@ -839,6 +869,7 @@ class GradePredictor:
             content=ft.Column(
                 controls=[
                     ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+                    ft.Text(value = "This grade predictor is based of data taken from: archive.ics.uci.edu/dataset/320/student+performance"),
                     ft.Container(height=2),
                     self.question_text,
                     ft.Container(height=5),
