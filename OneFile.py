@@ -14,7 +14,6 @@ import re
 import openai
 import pandas as pd
 import numpy as np
-from gtts import gTTS
 import random
 
 nltk.download('wordnet')
@@ -474,18 +473,13 @@ class ViewFlashcard:
 
         self.user_answer_input = ft.TextField(label='Answer', width=400)
         self.question_text = ft.Text(value=question_text, size=20, weight='bold')
-        self.audio =  Audio(src=False)
-        self.page.overlay.append(self.audio)
 
         view_flashcard = ft.Container(
             content=ft.Column(
                 controls=[
                     ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard")),
                     ft.Container(height=20),
-                    ft.GestureDetector(    
-                        self.question_text,
-                        on_tap= self.say_question,
-                    ),
+                    self.question_text,
                     ft.Text(value="Use the LEARN button if you're answer is correct but isnt recognised, this will improve answer detection in the future."),
                     ft.Container(height=20),
                     self.user_answer_input,
@@ -504,28 +498,6 @@ class ViewFlashcard:
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
             content=view_flashcard,
         )
-
-    def remove_all_files_in_folder(self):
-        folder_path = "result/"
-        files = os.listdir(folder_path)
-        for file in files:
-            file_path = os.path.join(folder_path, file)
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-                print(f"File removed successfully: {file_path}")
-    
-    def say_question(self, e):
-        try:
-            self.remove_all_files_in_folder()
-            tts = gTTS(text=self.question_text.value, lang="en")
-            file_name = f"result/{random.randint(0, 100)}.mp3"
-            tts.save(file_name)
-            self.audio.src = file_name
-            self.audio.play()
-            self.page.update()
-        except Exception as ex:
-            print(f"Error: {ex}")
-            print("Error: Sound playback failed!")
 
     def preprocess_text(self, text):
         words = nltk.word_tokenize(text)
@@ -1101,9 +1073,9 @@ class Router:
             "/": Home(page).view(),
             "/name_flashcard": NameFlashcard(page).view(),
             "/flashcard_content": FlashcardContent(page).view(),
-            "/pick_flashcard": PickFlashcard(page).view(),
-            "/pick_flashcard_two": PickFlashcard_two(page).view(),
-            "/delete_flashcard": DeleteFlashcard(page).view(),
+            "/pick_flashcard": None,
+            "/pick_flashcard_two": None,
+            "/delete_flashcard": None,
             "/view_flashcard": None, 
             "/score": None,
             "/ai_tutor": AITutor(page).view(),
@@ -1113,6 +1085,14 @@ class Router:
 
     def route_change(self, route):
         self.page.views.clear()
+
+        if route.route == '/pick_flashcard':
+            pick_flashcard = PickFlashcard(self.page)
+            self.routes["/pick_flashcard"] = pick_flashcard.view()
+
+        if route.route == '/pick_flashcard_two':
+            pick_flashcard_two = PickFlashcard_two(self.page)
+            self.routes["/pick_flashcard_two"] = pick_flashcard_two.view()
         
         if route.route == '/view_flashcard':
             view_flashcard = ViewFlashcard(self.page)
@@ -1121,6 +1101,10 @@ class Router:
         if route.route == '/view_flashcard_two':
             view_flashcard_two = ViewFlashcard_two(self.page)
             self.routes["/view_flashcard_two"] = view_flashcard_two.view()
+
+        if route.route == '/delete_flashcard':
+            delete_flashcard = DeleteFlashcard(self.page)
+            self.routes["/delete_flashcard"] = delete_flashcard.view()
         
         if route.route == '/score':
             scorePage = Score(self.page)
