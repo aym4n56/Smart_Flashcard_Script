@@ -15,9 +15,7 @@ import openai
 import pandas as pd
 import numpy as np
 from gtts import gTTS
-from playsound import playsound
-
-
+from threading import Timer
 
 nltk.download('wordnet')
 nltk.download('stopwords')
@@ -480,6 +478,7 @@ class ViewFlashcard:
         view_flashcard = ft.Container(
             content=ft.Column(
                 controls=[
+
                     ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard")),
                     ft.Container(height=20),
                     ft.Text(value="Tip: Press play and use dictation to have a sound only experience!"),
@@ -637,11 +636,26 @@ class ViewFlashcard:
     def play_question(self, e):
         question_text = self.question_text.value
         if question_text and not question_text.isspace():
-            tts = gTTS(text=question_text, lang='en')
-            tts.save("question.mp3")
-            playsound("question.mp3")
-            os.remove("question.mp3")
+            # Define the file path
+            audio_file_path = "question.mp3"
     
+            try:
+                # Convert text to speech
+                tts = gTTS(text=question_text, lang='en')
+            
+                # Save or overwrite the mp3
+                tts.save(audio_file_path)
+                print(f"Audio file '{audio_file_path}' created/updated successfully.")
+        
+                # Play the audio file
+                audio_player = ft.Audio(src=audio_file_path, autoplay=True)
+                self.page.overlay.append(audio_player)
+                self.page.update()
+                print("Audio playback started.")
+    
+            except Exception as ex:
+                print(f"Error: {ex}")
+
     
     def view(self):
         return self.container
