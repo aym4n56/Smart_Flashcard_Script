@@ -15,7 +15,10 @@ import openai
 import pandas as pd
 import numpy as np
 from gtts import gTTS
-from threading import Timer
+import sounddevice as sd
+import scipy.io.wavfile as wav
+import speech_recognition as sr
+
 
 nltk.download('wordnet')
 nltk.download('stopwords')
@@ -37,7 +40,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'use ur own api key here'
+openai.api_key = 'api key goes here'
 
 class Home:
     def __init__(self, page):
@@ -468,12 +471,15 @@ class ViewFlashcard:
         global score, total
         score = int(0)
         total = int(0)
+        self.isRecording = False
 
         BG = '#041995'
         FG = '#3450a1'
 
         self.user_answer_input = ft.TextField(label='Answer', width=400)
         self.question_text = ft.Text(value=question_text, size=20, weight='bold')
+
+        self.path = "recording.wav"
 
         view_flashcard = ft.Container(
             content=ft.Column(
@@ -489,7 +495,13 @@ class ViewFlashcard:
                         ],
                     ),
                     self.user_answer_input,
-                    ft.ElevatedButton(text='Check', on_click=self.submit_answer),
+                    ft.Row(
+                        controls=[    
+                            ft.ElevatedButton(text='Check', on_click=self.submit_answer),
+                            ft.IconButton(icon = ft.icons.RECORD_VOICE_OVER_ROUNDED, on_click= self.start ),
+                            ft.IconButton(icon = ft.icons.STOP_CIRCLE_ROUNDED),
+                        ],
+                    ),
                     ft.ElevatedButton(text='LEARN', on_click=self.learn_answer),
                     ft.Text(value="Use the LEARN button if you're answer is correct but isnt recognised, this will improve answer detection in the future."),
                     ft.Container(height=20),
@@ -505,6 +517,34 @@ class ViewFlashcard:
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
             content=view_flashcard,
         )
+
+    
+    def start(self, e):
+        """Start recording audio for 5 seconds and recognize speech."""
+        if self.isRecording:
+            print("Already recording. Please wait.")
+            return
+
+        self.isRecording = True
+
+        # Show snackbar notification for recording start
+        self.page.snack_bar = SnackBar(
+            Text("Start recording for 5 seconds..."),
+            bgcolor="white"
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
+
+        freq = 44100  # Sample rate
+        duration = 5  # Duration in seconds
+        channels = 1  # Set to 1 for mono audio to avoid channel issues
+
+        recording = sd.rec(int(duration * freq), samplerate=freq, channels=channels)
+        sd.wait()  # Wait until recording is finished
+
+        # Save recording to WAV file
+        wav.write(self.path, freq, recording)
+        print("recording saved")
 
     def preprocess_text(self, text):
         words = nltk.word_tokenize(text)
@@ -655,8 +695,10 @@ class ViewFlashcard:
     
             except Exception as ex:
                 print(f"Error: {ex}")
+        
+    async def record_question(self, e):
+        return 
 
-    
     def view(self):
         return self.container
 
