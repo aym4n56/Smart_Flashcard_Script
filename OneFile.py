@@ -18,6 +18,7 @@ from gtts import gTTS
 import sounddevice as sd
 import scipy.io.wavfile as wav
 import speech_recognition as sr
+import soundfile as sf
 
 
 nltk.download('wordnet')
@@ -40,7 +41,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'api key goes here'
+openai.api_key = 'open api key'
 
 class Home:
     def __init__(self, page):
@@ -539,12 +540,30 @@ class ViewFlashcard:
         duration = 5  # Duration in seconds
         channels = 1  # Set to 1 for mono audio to avoid channel issues
 
-        recording = sd.rec(int(duration * freq), samplerate=freq, channels=channels)
-        sd.wait()  # Wait until recording is finished
+        try:
+            recording = sd.rec(int(duration * freq), samplerate=freq, channels=channels, dtype='int16')
+            sd.wait()  # Wait until recording is finished
 
-        # Save recording to WAV file
-        wav.write(self.path, freq, recording)
-        print("recording saved")
+            # Save recording to WAV file
+            recording_path = "recording.wav"
+            sf.write(recording_path, recording, freq)
+            print("Recording saved")
+
+            # Recognize speech using the saved recording
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(recording_path) as source:
+                audio_data = recognizer.record(source)
+                try:
+                    speech_result = recognizer.recognize_google(audio_data)
+                    print("Recognized speech:", speech_result)
+                except sr.UnknownValueError:
+                    print("Google Speech Recognition could not understand audio")
+                except sr.RequestError as e:
+                    print(f"Could not request results from Google Speech Recognition service; {e}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+        finally:
+            self.isRecording = False
 
     def preprocess_text(self, text):
         words = nltk.word_tokenize(text)
