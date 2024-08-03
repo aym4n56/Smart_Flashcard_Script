@@ -1,0 +1,9 @@
+flet==0.23.1
+nltk==3.8.1
+scikit-learn==1.5.0
+openai==0.28.0
+pandas==2.2.2
+numpy==1.26.4
+gtts==2.5.1
+sounddevice==0.4.6
+vosk==0.3.44
