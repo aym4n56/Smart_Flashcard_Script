@@ -17,9 +17,7 @@ import numpy as np
 from gtts import gTTS
 import sounddevice as sd
 import scipy.io.wavfile as wav
-import speech_recognition as sr
 import soundfile as sf
-
 
 nltk.download('wordnet')
 nltk.download('stopwords')
@@ -473,14 +471,20 @@ class ViewFlashcard:
         score = int(0)
         total = int(0)
         self.isRecording = False
+        self.recording = None
+        self.audio_data = []
 
         BG = '#041995'
         FG = '#3450a1'
 
         self.user_answer_input = ft.TextField(label='Answer', width=400)
         self.question_text = ft.Text(value=question_text, size=20, weight='bold')
-
+        self.record_button = ft.IconButton(
+            icon=ft.icons.RECORD_VOICE_OVER_ROUNDED,
+            on_click=self.start
+        )
         self.path = "recording.wav"
+        self.recording_path = "recording.wav"
 
         view_flashcard = ft.Container(
             content=ft.Column(
@@ -499,8 +503,8 @@ class ViewFlashcard:
                     ft.Row(
                         controls=[    
                             ft.ElevatedButton(text='Check', on_click=self.submit_answer),
-                            ft.IconButton(icon = ft.icons.RECORD_VOICE_OVER_ROUNDED, on_click= self.start ),
-                            ft.IconButton(icon = ft.icons.STOP_CIRCLE_ROUNDED),
+                            self.record_button,
+                            ft.IconButton(icon = ft.icons.PLAY_CIRCLE_FILL_ROUNDED, on_click=self.play_rec),
                         ],
                     ),
                     ft.ElevatedButton(text='LEARN', on_click=self.learn_answer),
@@ -518,53 +522,67 @@ class ViewFlashcard:
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
             content=view_flashcard,
         )
-
     
     def start(self, e):
-        """Start recording audio for 5 seconds and recognize speech."""
+        """Start or stop recording audio based on the current state."""
         if self.isRecording:
-            print("Already recording. Please wait.")
-            return
-
-        self.isRecording = True
-
-        # Show snackbar notification for recording start
-        self.page.snack_bar = SnackBar(
-            Text("Start recording for 5 seconds..."),
-            bgcolor="white"
-        )
-        self.page.snack_bar.open = True
-        self.page.update()
-
-        freq = 44100  # Sample rate
-        duration = 5  # Duration in seconds
-        channels = 1  # Set to 1 for mono audio to avoid channel issues
-
-        try:
-            recording = sd.rec(int(duration * freq), samplerate=freq, channels=channels, dtype='int16')
-            sd.wait()  # Wait until recording is finished
-
-            # Save recording to WAV file
-            recording_path = "recording.wav"
-            sf.write(recording_path, recording, freq)
-            print("Recording saved")
-
-            # Recognize speech using the saved recording
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(recording_path) as source:
-                audio_data = recognizer.record(source)
-                try:
-                    speech_result = recognizer.recognize_google(audio_data)
-                    print("Recognized speech:", speech_result)
-                except sr.UnknownValueError:
-                    print("Google Speech Recognition could not understand audio")
-                except sr.RequestError as e:
-                    print(f"Could not request results from Google Speech Recognition service; {e}")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-        finally:
+            print("Stopping recording...")
             self.isRecording = False
 
+            # Save the recording to WAV file
+            if self.audio_data:
+                recording_array = np.concatenate(self.audio_data, axis=0)
+                sf.write(self.recording_path, recording_array, 44100)
+                print("Recording saved")
+            else:
+                print("No audio data to save.")
+
+            # Change the button icon to start
+            self.record_button.icon = ft.icons.RECORD_VOICE_OVER_ROUNDED
+            self.record_button.update()
+            self.page.snack_bar = SnackBar(
+                Text("Recording stopped and saved."),
+                bgcolor="white"
+            )
+            self.page.snack_bar.open = True
+        else:
+            print("Starting recording...")
+            self.isRecording = True
+            self.audio_data = []  # Clear previous audio data
+
+            # Change the button icon to stop
+            self.record_button.icon = ft.icons.STOP_CIRCLE_ROUNDED
+            self.record_button.update()
+            self.page.snack_bar = SnackBar(
+                Text("Start recording..."),
+                bgcolor="white"
+            )
+            self.page.snack_bar.open = True
+
+            freq = 44100  # Sample rate
+            channels = 1  # Set to 1 for mono audio
+
+            # Function to record audio chunks
+            def callback(indata, frames, time, status):
+                if status:
+                    print(status, file=sys.stderr)
+                if self.isRecording:
+                    self.audio_data.append(indata.copy())
+
+            # Start recording
+            with sd.InputStream(samplerate=freq, channels=channels, dtype='int16', callback=callback):
+                while self.isRecording:
+                    sd.sleep(1000)  # Record in 1-second chunks
+
+        # Update the page to reflect changes
+        self.page.update()
+
+    def play_rec(self, e):
+        rec_path = "recording.wav"
+        rec_audio_player = ft.Audio(src=rec_path, autoplay=True)
+        self.page.overlay.append(rec_audio_player)
+        self.page.update()
+        
     def preprocess_text(self, text):
         words = nltk.word_tokenize(text)
         filtered_words = [word for word in words if word.isalnum() and word.lower() not in self.stop_words]
