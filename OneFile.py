@@ -16,8 +16,12 @@ import pandas as pd
 import numpy as np
 from gtts import gTTS
 import sounddevice as sd
-import scipy.io.wavfile as wav
+import wave
 import soundfile as sf
+from vosk import Model, KaldiRecognizer
+import json
+import sys
+
 
 nltk.download('wordnet')
 nltk.download('stopwords')
@@ -39,7 +43,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'open api key'
+openai.api_key = ''
 
 class Home:
     def __init__(self, page):
@@ -473,6 +477,11 @@ class ViewFlashcard:
         self.isRecording = False
         self.recording = None
         self.audio_data = []
+        self.model_path = "vosk-model-small-en-us-0.15"  # Path to your Vosk model
+        self.model = Model(self.model_path)
+        self.recognizer = KaldiRecognizer(self.model, 16000)
+        self.recording_data = []
+
 
         BG = '#041995'
         FG = '#3450a1'
@@ -481,7 +490,7 @@ class ViewFlashcard:
         self.question_text = ft.Text(value=question_text, size=20, weight='bold')
         self.record_button = ft.IconButton(
             icon=ft.icons.RECORD_VOICE_OVER_ROUNDED,
-            on_click=self.start
+            on_click=self.toggle_recording
         )
         self.path = "recording.wav"
         self.recording_path = "recording.wav"
@@ -522,60 +531,74 @@ class ViewFlashcard:
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
             content=view_flashcard,
         )
-    
-    def start(self, e):
-        """Start or stop recording audio based on the current state."""
+
+    def start_recording(self):
+        def callback(indata, frames, time, status):
+            if status:
+                print(status, file=sys.stderr)
+            if self.isRecording:
+                # Append audio data
+                self.recording_data.append(indata.copy())
+        
+        # Open the input stream with a callback
+        self.stream = sd.InputStream(samplerate=16000, channels=1, dtype='int16', callback=callback)
+        self.stream.start()
+
+    def stop_recording(self):
         if self.isRecording:
-            print("Stopping recording...")
             self.isRecording = False
+            self.stream.stop()
+            self.stream.close()
 
-            # Save the recording to WAV file
-            if self.audio_data:
-                recording_array = np.concatenate(self.audio_data, axis=0)
-                sf.write(self.recording_path, recording_array, 44100)
-                print("Recording saved")
-            else:
-                print("No audio data to save.")
+            # Save recorded audio data to WAV file
+            recorded_audio = np.concatenate(self.recording_data, axis=0)
+            wav_path = "recording.wav"
+            with wave.open(wav_path, 'wb') as wf:
+                wf.setnchannels(1)  # Mono audio
+                wf.setsampwidth(2)  # 2 bytes per sample (16 bits)
+                wf.setframerate(16000)  # Sample rate
+                wf.writeframes(recorded_audio.tobytes())
+            
+            # Clear stored data
+            self.recording_data = []
 
-            # Change the button icon to start
-            self.record_button.icon = ft.icons.RECORD_VOICE_OVER_ROUNDED
-            self.record_button.update()
-            self.page.snack_bar = SnackBar(
-                Text("Recording stopped and saved."),
-                bgcolor="white"
-            )
+            # Initialize recognizer with the model
+            self.model = Model(self.model_path)
+            recognizer = KaldiRecognizer(self.model, 16000)
+
+            # Process the saved WAV file for speech recognition
+            with wave.open(wav_path, 'rb') as wf:
+                while True:
+                    data = wf.readframes(4000)
+                    if len(data) == 0:
+                        break
+                    if recognizer.AcceptWaveform(data):
+                        result = json.loads(recognizer.Result())
+                        if result:
+                            recognized_text = result.get('text', '')
+                            self.user_answer_input.value = recognized_text
+                            self.page.update()
+
+            # Update the page to reflect changes
+            self.page.snack_bar = ft.SnackBar(ft.Text("Recording stopped and saved to recording.wav."))
             self.page.snack_bar.open = True
-        else:
-            print("Starting recording...")
+            self.page.update()
+    
+    def toggle_recording(self, e):
+        if not self.isRecording:
             self.isRecording = True
-            self.audio_data = []  # Clear previous audio data
-
-            # Change the button icon to stop
             self.record_button.icon = ft.icons.STOP_CIRCLE_ROUNDED
-            self.record_button.update()
-            self.page.snack_bar = SnackBar(
-                Text("Start recording..."),
-                bgcolor="white"
-            )
+            self.page.snack_bar = ft.SnackBar(ft.Text("Recording started."))
             self.page.snack_bar.open = True
+            self.page.update()
+            self.start_recording()
+        else:
+            self.stop_recording()
+            self.record_button.icon = ft.icons.RECORD_VOICE_OVER_ROUNDED
 
-            freq = 44100  # Sample rate
-            channels = 1  # Set to 1 for mono audio
-
-            # Function to record audio chunks
-            def callback(indata, frames, time, status):
-                if status:
-                    print(status, file=sys.stderr)
-                if self.isRecording:
-                    self.audio_data.append(indata.copy())
-
-            # Start recording
-            with sd.InputStream(samplerate=freq, channels=channels, dtype='int16', callback=callback):
-                while self.isRecording:
-                    sd.sleep(1000)  # Record in 1-second chunks
-
-        # Update the page to reflect changes
+        # Ensure the page is updated to reflect changes
         self.page.update()
+
 
     def play_rec(self, e):
         rec_path = "recording.wav"
