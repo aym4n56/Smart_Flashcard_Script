@@ -1,7 +1,6 @@
 import flet as ft
 from flet import *
 import sqlite3
-import os
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -9,7 +8,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import accuracy_score
 import re
 import openai
 import pandas as pd
@@ -17,11 +15,9 @@ import numpy as np
 from gtts import gTTS
 import sounddevice as sd
 import wave
-import soundfile as sf
 from vosk import Model, KaldiRecognizer
 import json
 import sys
-
 
 nltk.download('wordnet')
 nltk.download('stopwords')
@@ -43,7 +39,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = ''
+openai.api_key = 'open ai api key'
 
 class Home:
     def __init__(self, page):
@@ -533,15 +529,8 @@ class ViewFlashcard:
         )
 
     def start_recording(self):
-        def callback(indata, frames, time, status):
-            if status:
-                print(status, file=sys.stderr)
-            if self.isRecording:
-                # Append audio data
-                self.recording_data.append(indata.copy())
-        
-        # Open the input stream with a callback
-        self.stream = sd.InputStream(samplerate=16000, channels=1, dtype='int16', callback=callback)
+        self.recording_data = []
+        self.stream = sd.InputStream(samplerate=16000, channels=1, dtype='int16', callback=self.callback)
         self.stream.start()
 
     def stop_recording(self):
@@ -559,31 +548,48 @@ class ViewFlashcard:
                 wf.setframerate(16000)  # Sample rate
                 wf.writeframes(recorded_audio.tobytes())
             
-            # Clear stored data
-            self.recording_data = []
+            # Recognize speech from WAV file
+            self.recognize_speech(wav_path)
 
-            # Initialize recognizer with the model
-            self.model = Model(self.model_path)
-            recognizer = KaldiRecognizer(self.model, 16000)
+            # Notify user
+            self.page.snack_bar = ft.SnackBar(ft.Text("Recording stopped and saved to recording.wav."))
+            self.page.snack_bar.open = True
+            self.page.update()
 
-            # Process the saved WAV file for speech recognition
+    def callback(self, indata, frames, time, status):
+        if status:
+            print(status, file=sys.stderr)
+        if self.isRecording:
+            self.recording_data.append(indata.copy())
+
+    def recognize_speech(self, wav_path):
+        try:
+            model = Model(self.model_path)
+            recognizer = KaldiRecognizer(model, 16000)
+            recognized_text = ""
+
             with wave.open(wav_path, 'rb') as wf:
                 while True:
                     data = wf.readframes(4000)
                     if len(data) == 0:
                         break
+                    print(f"Read data chunk of size {len(data)}")
                     if recognizer.AcceptWaveform(data):
                         result = json.loads(recognizer.Result())
-                        if result:
-                            recognized_text = result.get('text', '')
-                            self.user_answer_input.value = recognized_text
-                            self.page.update()
+                        print(f"Recognizer result: {result}")
+                        recognized_text += result.get('text', '')
 
-            # Update the page to reflect changes
-            self.page.snack_bar = ft.SnackBar(ft.Text("Recording stopped and saved to recording.wav."))
+            final_result = json.loads(recognizer.FinalResult())
+            print(f"Final recognizer result: {final_result}")
+            recognized_text += final_result.get('text', '')
+
+            self.user_answer_input.value = recognized_text
+
+        except Exception as e:
+            print(f"Error during speech recognition: {e}")
+            self.page.snack_bar = ft.SnackBar(ft.Text("Error during speech recognition."))
             self.page.snack_bar.open = True
-            self.page.update()
-    
+
     def toggle_recording(self, e):
         if not self.isRecording:
             self.isRecording = True
@@ -595,10 +601,7 @@ class ViewFlashcard:
         else:
             self.stop_recording()
             self.record_button.icon = ft.icons.RECORD_VOICE_OVER_ROUNDED
-
-        # Ensure the page is updated to reflect changes
-        self.page.update()
-
+            self.page.update()
 
     def play_rec(self, e):
         rec_path = "recording.wav"
