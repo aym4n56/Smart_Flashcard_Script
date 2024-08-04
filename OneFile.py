@@ -39,7 +39,7 @@ learnt_answers = {}
 score = 0
 total = 0
 
-openai.api_key = 'open ai api key'
+openai.api_key = 'open api key'
 
 class Home:
     def __init__(self, page):
@@ -497,7 +497,7 @@ class ViewFlashcard:
 
                     ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard")),
                     ft.Container(height=20),
-                    ft.Text(value="Tip: Press play and use dictation to have a sound only experience!"),
+                    ft.Text(value="Tip: Press play and use record button to have a sound only experience!"),
                     ft.Row(
                         controls=[
                             self.question_text,
@@ -509,7 +509,6 @@ class ViewFlashcard:
                         controls=[    
                             ft.ElevatedButton(text='Check', on_click=self.submit_answer),
                             self.record_button,
-                            ft.IconButton(icon = ft.icons.PLAY_CIRCLE_FILL_ROUNDED, on_click=self.play_rec),
                         ],
                     ),
                     ft.ElevatedButton(text='LEARN', on_click=self.learn_answer),
@@ -552,7 +551,7 @@ class ViewFlashcard:
             self.recognize_speech(wav_path)
 
             # Notify user
-            self.page.snack_bar = ft.SnackBar(ft.Text("Recording stopped and saved to recording.wav."))
+            self.page.snack_bar = ft.SnackBar(ft.Text("Recording stopped"))
             self.page.snack_bar.open = True
             self.page.update()
 
@@ -594,7 +593,7 @@ class ViewFlashcard:
         if not self.isRecording:
             self.isRecording = True
             self.record_button.icon = ft.icons.STOP_CIRCLE_ROUNDED
-            self.page.snack_bar = ft.SnackBar(ft.Text("Recording started."))
+            self.page.snack_bar = ft.SnackBar(ft.Text("Recording started"))
             self.page.snack_bar.open = True
             self.page.update()
             self.start_recording()
@@ -602,12 +601,6 @@ class ViewFlashcard:
             self.stop_recording()
             self.record_button.icon = ft.icons.RECORD_VOICE_OVER_ROUNDED
             self.page.update()
-
-    def play_rec(self, e):
-        rec_path = "recording.wav"
-        rec_audio_player = ft.Audio(src=rec_path, autoplay=True)
-        self.page.overlay.append(rec_audio_player)
-        self.page.update()
         
     def preprocess_text(self, text):
         words = nltk.word_tokenize(text)
@@ -772,21 +765,43 @@ class ViewFlashcard_two:
         self.BG = '#041995'
         self.FG = '#3450a1'
 
-        self.question_text = ft.Text(value='', size=20, weight='bold')
-        self.answer_text = ft.Text(value='', size=20, weight='bold')
+        self.question_text = ft.Text(value='', size=20, weight='bold', text_align=ft.TextAlign.CENTER)
+        self.answer_text = ft.Text(value='', size=20, weight='bold', text_align=ft.TextAlign.CENTER)
         
         self.questions = self.load_questions()
         self.current_question_index = -1
         self.next_question(None)
+
+        self.question_card = ft.Card(
+            content=ft.Container(
+                content=self.question_text,
+                alignment=ft.alignment.center,
+                padding=ft.padding.all(20),
+                bgcolor=self.BG,
+                border_radius=15,
+                height=150
+            )
+        )
+
+        self.answer_card = ft.Card(
+            content=ft.Container(
+                content=self.answer_text,
+                alignment=ft.alignment.center,
+                padding=ft.padding.all(20),
+                bgcolor='green',
+                border_radius=15,
+                height=150
+            )
+        )
 
         view_flashcard_two = ft.Container(
             content=ft.Column(
                 controls=[
                     ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard_two")),
                     ft.Container(height=20),
-                    self.question_text,
+                    self.question_card,
                     ft.Container(height=20),
-                    self.answer_text,
+                    self.answer_card,
                     ft.ElevatedButton(text='Next', on_click=self.next_question),
                 ],
             ),
@@ -819,8 +834,8 @@ class ViewFlashcard_two:
 
         question_id, question_text = self.questions[self.current_question_index]
         
-        self.question_text.value = question_text
-        self.answer_text.value = self.load_answer(question_id)
+        self.question_text.value = f"Q: {question_text}"
+        self.answer_text.value = f"A: {self.load_answer(question_id)}"
         
         self.page.update()
 
@@ -889,6 +904,8 @@ class AITutor:
 
         BG = '#041995'
         FG = '#3450a1'
+
+        self.page.update()
 
         self.question_text_input = ft.TextField(label='Question', width=400)
         self.ai_answer_output = ft.Text(value='', size=15)
@@ -1190,6 +1207,7 @@ class DeleteFlashcard:
         else:
             print(f"Flashcard {name} not found.")
         
+        
         cursor.close()
         conn.close()
         
@@ -1214,7 +1232,7 @@ class Router:
             "/delete_flashcard": None,
             "/view_flashcard": None, 
             "/score": None,
-            "/ai_tutor": AITutor(page).view(),
+            "/ai_tutor": None,
             "/grade_predictor": None,
             "/settings": Settings(page).view(),
         }
@@ -1249,6 +1267,10 @@ class Router:
         if route.route == '/grade_predictor':
             grade_predictor = GradePredictor(self.page)
             self.routes["/grade_predictor"] = grade_predictor.view()
+
+        if route.route == '/ai_tutor':
+            ai_tutor = AITutor(self.page)
+            self.routes["/ai_tutor"] = ai_tutor.view()
 
         self.page.views.append(self.routes.get(route.route, self.routes["/"]))
         self.page.update()
