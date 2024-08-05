@@ -50,6 +50,8 @@ class Home:
         buttons = ft.Column(
             height=400,
             scroll='auto',
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             controls=[
                 ft.Container(
                     height=70,
@@ -133,7 +135,10 @@ class Home:
         )
 
         home_screen = ft.Container(
+            alignment=ft.alignment.center,
             content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
                     ft.Container(height=20),
                     ft.Text(value='Welcome to the Flashcard App!', size=31, weight='bold'),
@@ -150,10 +155,11 @@ class Home:
         )
 
         self.container = ft.Container(
-            width=400,
+            width=700,
             height=850,
             bgcolor=FG,
             border_radius=35,
+            alignment=ft.alignment.center,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
             content=home_screen,
         )
@@ -176,12 +182,20 @@ class NameFlashcard:
 
         self.flashcard_name_input = ft.TextField(label='Flashcard Name', width=400)
 
+        back_button = ft.Container(
+            content=ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+            alignment=ft.alignment.center_left  # Align it to the left
+        )
+
+
         name_flashcard = ft.Container(
+            alignment=ft.alignment.center,  # Center the whole content
             content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
                     ft.Container(height=20),
-                    ft.Text(value='What is your flashcard called?', size=31, weight='bold'),
+                    ft.Text(value='What is your flashcard called?', size=31, weight='bold', text_align=ft.TextAlign.CENTER),
                     ft.Container(height=20),
                     self.flashcard_name_input,
                     ft.ElevatedButton(text='Next', on_click=handle_submit_and_next),
@@ -190,12 +204,18 @@ class NameFlashcard:
         )
 
         self.container = ft.Container(
-            width=400,
+            width=700,  # Use a larger width for better display on MacBook
             height=850,
             bgcolor=FG,
             border_radius=35,
-            padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=name_flashcard,
+            padding=ft.padding.only(top=20, left=20, right=20, bottom=5),
+            content=ft.Column(
+                [
+                    back_button,
+                    ft.Container(height=10),  # Optional spacing
+                    name_flashcard,
+                ],
+            )
         )
 
     def view(self):
@@ -232,10 +252,18 @@ class FlashcardContent:
 
             page.go("/")
 
+        
+        back_button = ft.Container(
+            content=ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/name_flashcard")),
+            alignment=ft.alignment.center_left  # Align it to the left
+        )
+
         flashcard_content = ft.Container(
+            alignment=ft.alignment.center,
             content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.ElevatedButton(text='Back', on_click=lambda _: page.go("/")),
                     ft.Container(height=20),
                     ft.Text(value='Enter your question and answer:', size=31, weight='bold'),
                     ft.Text(value='Please make sure you press submit on every question before pressing done!'),
@@ -250,12 +278,18 @@ class FlashcardContent:
         )
 
         self.container = ft.Container(
-            width=400,
+            width=700,
             height=850,
             bgcolor=FG,
             border_radius=35,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=flashcard_content,
+            content=ft.Column(
+                [
+                    back_button,
+                    ft.Container(height=10),  # Optional spacing
+                    flashcard_content,
+                ],
+            )
         )
 
     def submit_content(self, e):
@@ -288,10 +322,17 @@ class PickFlashcard:
 
         self.update_flashcards(flashcard_rectangles)
 
+        back_button = ft.Container(
+            content=ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+            alignment=ft.alignment.center_left  # Align it to the left
+        )
+
         pick_flashcard = ft.Container(
+            alignment=ft.alignment.center,
             content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
                     ft.Container(height=20),
                     ft.Text(value='What would you like to test yourself on?', size=31, weight='bold'),
                     ft.Container(height=20),
@@ -305,12 +346,18 @@ class PickFlashcard:
         )
 
         self.container = ft.Container(
-            width=400,
+            width=700,
             height=850,
             bgcolor=FG,
             border_radius=35,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=pick_flashcard,
+            content=ft.Column(
+                [
+                    back_button,
+                    ft.Container(height=10),  # Optional spacing
+                    pick_flashcard,
+                ],
+            )
         )
 
     def update_flashcards(self, flashcard_rectangles):
@@ -382,10 +429,17 @@ class PickFlashcard_two:
 
         self.update_flashcards(flashcard_rectangles)
 
+        back_button = ft.Container(
+            content=ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+            alignment=ft.alignment.center_left  # Align it to the left
+        )
+
         pick_flashcard_two = ft.Container(
+            alignment=ft.alignment.center,
             content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
                     ft.Container(height=20),
                     ft.Text(value='What would you like to revise?', size=31, weight='bold'),
                     ft.Container(height=20),
@@ -399,12 +453,18 @@ class PickFlashcard_two:
         )
 
         self.container = ft.Container(
-            width=400,
+            width=700,
             height=850,
             bgcolor=FG,
             border_radius=35,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=pick_flashcard_two,
+            content=ft.Column(
+                [
+                    back_button,
+                    ft.Container(height=10),  # Optional spacing
+                    pick_flashcard_two,
+                ],
+            )
         )
 
     def update_flashcards(self, flashcard_rectangles):
@@ -491,14 +551,21 @@ class ViewFlashcard:
         self.path = "recording.wav"
         self.recording_path = "recording.wav"
 
-        view_flashcard = ft.Container(
-            content=ft.Column(
-                controls=[
+        back_button = ft.Container(
+            content=ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard")),
+            alignment=ft.alignment.center_left  # Align it to the left
+        )
 
-                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/pick_flashcard")),
+        view_flashcard = ft.Container(
+            alignment=ft.alignment.center,
+            content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
                     ft.Container(height=20),
                     ft.Text(value="Tip: Press play and use record button to have a sound only experience!"),
                     ft.Row(
+                        alignment=ft.MainAxisAlignment.CENTER,
                         controls=[
                             self.question_text,
                             ft.IconButton(icon = ft.icons.PLAY_CIRCLE_FILL_ROUNDED ,on_click= self.play_question ),
@@ -506,12 +573,13 @@ class ViewFlashcard:
                     ),
                     self.user_answer_input,
                     ft.Row(
+                        alignment=ft.MainAxisAlignment.CENTER,
                         controls=[    
                             ft.ElevatedButton(text='Check', on_click=self.submit_answer),
+                            ft.ElevatedButton(text='LEARN', on_click=self.learn_answer),
                             self.record_button,
                         ],
                     ),
-                    ft.ElevatedButton(text='LEARN', on_click=self.learn_answer),
                     ft.Text(value="Use the LEARN button if you're answer is correct but isnt recognised, this will improve answer detection in the future."),
                     ft.Container(height=20),
                 ],
@@ -519,12 +587,18 @@ class ViewFlashcard:
         )
 
         self.container = ft.Container(
-            width=400,
+            width=700,
             height=850,
             bgcolor=FG,
             border_radius=35,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=view_flashcard,
+            content=ft.Column(
+                [
+                    back_button,
+                    ft.Container(height=10),  # Optional spacing
+                    view_flashcard,
+                ],
+            )
         )
 
     def start_recording(self):
@@ -861,7 +935,10 @@ class Score:
         FG = '#3450a1'
         
         score = ft.Container(
+            alignment=ft.alignment.center,
             content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
                     ft.Container(height=70),
                     ft.Text(value=f"You have achieved {score} out of {total}", size=35, weight='bold'),
@@ -910,9 +987,17 @@ class AITutor:
         self.question_text_input = ft.TextField(label='Question', width=400)
         self.ai_answer_output = ft.Text(value='', size=15)
 
-        ai_tutor_screen = ft.Column(
-            controls=[
-                ft.ElevatedButton(text='Back', on_click=lambda _: page.go("/")),
+        back_button = ft.Container(
+            content=ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+            alignment=ft.alignment.center_left  # Align it to the left
+        )
+
+        ai_tutor_screen = ft.Container(
+            alignment=ft.alignment.center,
+            content = ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
                 ft.Container(height=20),
                 ft.Text(value='Ask me anything!', size=31, weight='bold'),
                 ft.Text(value='Tip: Try typing "Explain" followed by a topic you are unsure about.'),
@@ -932,15 +1017,22 @@ class AITutor:
                     )
                 ),
             ]
+            )
         )
 
         self.container = ft.Container(
-            width=400,
+            width=700,
             height=850,
             bgcolor=FG,
             border_radius=35,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=ai_tutor_screen
+            content=ft.Column(
+                [
+                    back_button,
+                    ft.Container(height=10),  # Optional spacing
+                    ai_tutor_screen,
+                ],
+            )
         )
 
     def ask_ai(self, e):
@@ -990,10 +1082,17 @@ class GradePredictor:
         
         self.grade_prediction_result = ft.Text(value="", size=20, weight='bold')
 
+        back_button = ft.Container(
+            content=ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+            alignment=ft.alignment.center_left  # Align it to the left
+        )
+
         grade_predictor = ft.Container(
+            alignment=ft.alignment.center,
             content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
                     ft.Text(value = "This grade predictor is based of data taken from: archive.ics.uci.edu/dataset/320/student+performance"),
                     ft.Container(height=2),
                     self.question_text,
@@ -1031,12 +1130,18 @@ class GradePredictor:
 
 
         self.container = ft.Container(
-            width=400,
+            width=700,
             height=850,
             bgcolor=FG,
             border_radius=35,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=grade_predictor,
+            content=ft.Column(
+                [
+                    back_button,
+                    ft.Container(height=10),  # Optional spacing
+                    grade_predictor,
+                ],
+            )
         )
 
     def next(self, e):
@@ -1090,10 +1195,17 @@ class Settings:
             ]
         )
 
+        back_button = ft.Container(
+            content=ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
+            alignment=ft.alignment.center_left  # Align it to the left
+        )
+
         settings = ft.Container(
+            alignment=ft.alignment.center,
             content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/")),
                     ft.Container(height=20),
                     ft.Text(value='Settings', size=31, weight='bold'),
                     ft.Text(value='Choose an option from below:'),
@@ -1108,12 +1220,18 @@ class Settings:
         )
 
         self.container = ft.Container(
-            width=400,
+            width=700,
             height=850,
             bgcolor=FG,
             border_radius=35,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=settings,
+            content=ft.Column(
+                [
+                    back_button,
+                    ft.Container(height=10),  # Optional spacing
+                    settings,
+                ],
+            )
         )
 
     def view(self):
@@ -1134,10 +1252,17 @@ class DeleteFlashcard:
 
         self.update_flashcards(flashcard_rectangles)
 
+        back_button = ft.Container(
+            content=ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/settings")),
+            alignment=ft.alignment.center_left  # Align it to the left
+        )
+
         delete_flashcard = ft.Container(
+            alignment=ft.alignment.center,
             content=ft.Column(
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.ElevatedButton(text='Back', on_click=lambda _: self.page.go("/settings")),
                     ft.Container(height=20),
                     ft.Text(value='What would you like to delete?', size=31, weight='bold'),
                     ft.Text(value='Be careful, once you press a flashcard it will be gone forever.'),
@@ -1152,12 +1277,18 @@ class DeleteFlashcard:
         )
 
         self.container = ft.Container(
-            width=400,
+            width=700,
             height=850,
             bgcolor=FG,
             border_radius=35,
             padding=ft.padding.only(top=50, left=20, right=20, bottom=5),
-            content=delete_flashcard,
+             content=ft.Column(
+                [
+                    back_button,
+                    ft.Container(height=10),  # Optional spacing
+                    delete_flashcard,
+                ],
+            )
         )
 
     def update_flashcards(self, flashcard_rectangles):
